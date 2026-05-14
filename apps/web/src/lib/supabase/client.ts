@@ -1,5 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+const KAPI_PULSE_SCHEMA = 'kapi_pulse'
+
 let client: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
@@ -12,7 +14,9 @@ export function createClient() {
   }
 
   if (!client) {
-    client = createBrowserClient(url, key)
+    client = createBrowserClient(url, key, {
+      db: { schema: KAPI_PULSE_SCHEMA },
+    })
   }
   return client
 }

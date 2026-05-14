@@ -16,6 +16,7 @@ export async function createServerSupabaseClient() {
     supabaseUrl,
     supabaseKey,
     {
+      db: { schema: 'kapi_pulse' },
       cookies: {
         getAll() {
           return cookieStore.getAll()

@@ -45,6 +45,10 @@ export async function refreshExpiringTokens() {
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: 'kapi_pulse' },
+    },
   )
 
   // Buscar cuentas que expiran en las próximas 24h

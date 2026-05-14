@@ -5,6 +5,7 @@ import { logger } from 'hono/logger'
 import 'dotenv/config'
 import { connect } from './routes/connect'
 import { posts } from './routes/posts'
+import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
 
@@ -30,10 +31,7 @@ app.get('/api/social-accounts', async (c) => {
   const orgId = c.req.query('org_id')
   if (!orgId) return c.json({ error: 'Falta org_id' }, 400)
 
-  const { createClient } = await import('@supabase/supabase-js')
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('social_accounts')
     .select('id, provider, external_id, display_name, avatar_url, status, scopes, expires_at, metadata, connected_at')
     .eq('organization_id', orgId)
@@ -47,10 +45,7 @@ app.get('/api/social-accounts', async (c) => {
 app.delete('/api/social-accounts/:id', async (c) => {
   const accountId = c.req.param('id')
 
-  const { createClient } = await import('@supabase/supabase-js')
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('social_accounts')
     .delete()
     .eq('id', accountId)

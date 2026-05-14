@@ -33,6 +33,20 @@ pnpm db:seed
 pnpm dev
 ```
 
+### Schema dedicado en Supabase
+
+Todas las tablas de KAPI Pulse viven en el schema `kapi_pulse` (no en `public`)
+para poder compartir el proyecto Supabase con otros productos sin colisiones.
+
+Pasos únicos en cada proyecto Supabase nuevo:
+
+1. Aplicar las migraciones en `infra/supabase/migrations/` (orden alfabético).
+2. **Dashboard → Settings → API → Exposed schemas**: agregar `kapi_pulse`
+   a la lista. Sin este paso, `supabase-js` no puede consultar las tablas
+   aunque los grants estén en su sitio.
+3. (Opcional) **Auth → Providers**: habilitar email + OAuth de Google si
+   se quiere social sign-in.
+
 ## Servicios
 
 | Servicio | Puerto | Descripcion |

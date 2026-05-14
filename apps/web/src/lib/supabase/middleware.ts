@@ -16,6 +16,7 @@ export async function updateSession(request: NextRequest) {
     supabaseUrl,
     supabaseKey,
     {
+      db: { schema: 'kapi_pulse' },
       cookies: {
         getAll() {
           return request.cookies.getAll()
