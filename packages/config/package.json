@@ -1,0 +1,8 @@
+{
+  "name": "@kapi/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "files": ["*.js", "*.json"]
+}

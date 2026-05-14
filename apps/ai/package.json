@@ -1,0 +1,9 @@
+{
+  "name": "@kapi/ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "python main.py",
+    "start": "uvicorn main:app --host 0.0.0.0 --port 3002"
+  }
+}
