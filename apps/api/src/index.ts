@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import 'dotenv/config'
 import { connect } from './routes/connect'
+import { callback } from './routes/callback'
 import { posts } from './routes/posts'
 import { supabaseAdmin } from './lib/supabase'
 
@@ -19,9 +20,10 @@ app.use('*', cors({
 app.get('/', (c) => c.json({ service: 'kapi-pulse-api', status: 'ok' }))
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }))
 
-// OAuth connect/callback routes
+// OAuth: initiator y callback en routers separados para no colisionar
+// con otras rutas bajo /api/*
 app.route('/api/connect', connect)
-app.route('/api', connect) // Para /api/callback/:provider
+app.route('/api/callback', callback)
 
 // Posts routes
 app.route('/api/posts', posts)
