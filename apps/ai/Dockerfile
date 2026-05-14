@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # Servicio FastAPI con Claude (apps/ai)
 # Build:  docker build -f apps/ai/Dockerfile -t kapi-ai .  (desde la raíz del monorepo)
 
