@@ -8,13 +8,24 @@ if (!redisUrl) {
   console.warn('REDIS_URL no configurado — worker en modo standby')
   console.log('Worker de publicacion iniciado (standby — sin Redis)')
 } else {
-  const { Queue, Worker, QueueScheduler } = await import('bullmq')
+  const { Queue, Worker } = await import('bullmq')
   const IORedis = (await import('ioredis')).default
 
   const connection = new IORedis(redisUrl, { maxRetriesPerRequest: null })
 
   // ============== Cola de publicación ==============
-  const publishQueue = new Queue('publish', { connection })
+  const publishQueue = new Queue('publish', {
+    connection,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 30_000, // 30s, 60s, 120s
+      },
+      removeOnComplete: { count: 500 },
+      removeOnFail: { count: 200 },
+    },
+  })
 
   const publishWorker = new Worker(
     'publish',
@@ -31,15 +42,6 @@ if (!redisUrl) {
     {
       connection,
       concurrency: 5,
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 30_000, // 30s, 60s, 120s
-        },
-        removeOnComplete: { count: 500 },
-        removeOnFail: { count: 200 },
-      },
     },
   )
 
