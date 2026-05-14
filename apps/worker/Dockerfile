@@ -10,7 +10,8 @@ WORKDIR /app
 COPY . .
 
 # Install ALL dependencies (including devDeps needed for tsup build)
-RUN NODE_ENV=development pnpm install --frozen-lockfile
+# Use --no-frozen-lockfile to allow newly added workspace packages
+RUN NODE_ENV=development pnpm install --no-frozen-lockfile
 
 # Build the worker app
 RUN pnpm --filter @kapi/worker build
