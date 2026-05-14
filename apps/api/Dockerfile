@@ -1,13 +1,10 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@11.1.2 --activate
 
 WORKDIR /app
-
-# Build-time arg (Coolify injects NODE_ENV=production; we force dev for deps)
-ARG NODE_ENV=development
 
 # Copy all workspace files
 COPY . .
