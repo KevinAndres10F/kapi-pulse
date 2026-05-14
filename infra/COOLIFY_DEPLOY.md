@@ -8,14 +8,16 @@ primera vez, después cada deploy es `git push`.
 ```
 Internet
    │
-   ├─ Netlify ──────────────────► apps/web (Next.js)
+   ├─ Netlify ──────────────────► apps/web (Next.js) — www.kapisg.com
    │
-   └─ api.kapi-pulse.com ───────► Hetzner VPS
+   └─ api.kapisg.com ───────────► Hetzner VPS
                                     │
                                     ├─ Coolify (panel)
-                                    ├─ apps/api    (puerto 3001)
-                                    ├─ apps/worker (sin puerto)
-                                    └─ Redis       (opcional, ver más abajo)
+                                    ├─ apps/api    (puerto 3001, público)
+                                    ├─ apps/ai     (puerto 3002, SIN domain público)
+                                    │                └── apps/api lo proxea por red interna
+                                    ├─ apps/worker (sin puerto, sin domain)
+                                    └─ Redis       (Upstash o local)
 ```
 
 ## 1. Crear el VPS en Hetzner Cloud
@@ -120,7 +122,41 @@ Para empezar prefiere Upstash — menos cosas que se pueden romper en el VPS.
 5. **Deploy** → Coolify hace el build (5-10 min la primera vez) y arranca
 6. Verifica: `curl https://api.kapisg.com/health` → `{"status":"healthy"}`
 
-### App 2: `kapi-worker`
+### App 2: `kapi-ai` (servicio Python con Claude)
+
+> Importante: este servicio **NO debe tener domain público** — apps/api lo
+> proxea por la red interna de Docker. Eso evita que se gasten créditos de
+> Claude por requests externos sin auth.
+
+1. Coolify → **+ New Resource** → mismo repo → mismo branch
+2. Build Pack: **Dockerfile**
+3. Configuración:
+   - **Dockerfile Location**: `apps/ai/Dockerfile`
+   - **Base Directory**: `/`
+   - **Port**: `3002`
+   - **Domain**: dejar **vacío** (no exponer públicamente)
+   - **Resource name**: `kapi-ai` ← exacto, así apps/api lo encuentra como `http://kapi-ai:3002`
+4. **Environment Variables**:
+   ```env
+   ANTHROPIC_API_KEY=sk-ant-... (de console.anthropic.com)
+   CLAUDE_MODEL=claude-opus-4-7
+   APP_URL=https://kapi-pulse.netlify.app
+   API_URL=https://api.kapisg.com
+   ```
+5. **Save** → **Deploy** (3-5 min)
+6. Verifica en logs: el container arranca con `Uvicorn running on http://0.0.0.0:3002`
+
+7. Una vez deployado, actualiza la app `kapi-api`:
+   - **Environment Variables** → agregar `AI_URL=http://kapi-ai:3002`
+   - **Redeploy**
+
+8. Smoke test (desde tu local):
+   ```bash
+   curl https://api.kapisg.com/api/ai/health
+   # Esperado: {"status":"healthy","claude_configured":true,"model":"claude-opus-4-7"}
+   ```
+
+### App 3: `kapi-worker`
 
 1. Coolify → **+ New Resource** → mismo repo → mismo branch
 2. Build Pack: **Dockerfile**

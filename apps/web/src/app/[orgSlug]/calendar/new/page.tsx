@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, Save, ArrowLeft, Plus, X } from 'lucide-react'
+import { Send, Save, ArrowLeft, Plus, X, Sparkles, Loader2 } from 'lucide-react'
 
 interface SocialAccount {
   id: string
@@ -55,7 +55,46 @@ export default function NewPostPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiTopic, setAiTopic] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiSuggestions, setAiSuggestions] = useState<
+    Array<{ content: string; hashtags: string[]; rationale: string }>
+  >([])
   const supabase = createClient()
+
+  async function generateWithAI() {
+    if (aiTopic.trim().length < 3 || !currentVariant) return
+    setAiLoading(true)
+    setAiSuggestions([])
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const res = await fetch(`${apiUrl}/api/ai/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: aiTopic,
+          platform: currentVariant.provider,
+          tone: 'profesional, cercano',
+          n_variants: 3,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.variants) setAiSuggestions(data.variants)
+    } catch {
+      // silent — el modal queda con suggestions vacío
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  function applyAISuggestion(s: { content: string; hashtags: string[] }) {
+    updateVariant(activeTab, 'content', s.content)
+    updateVariant(activeTab, 'hashtags', s.hashtags.join(', '))
+    setAiOpen(false)
+    setAiSuggestions([])
+    setAiTopic('')
+  }
 
   const loadAccounts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -223,6 +262,16 @@ export default function NewPostPage() {
             {/* Editor de la variante activa */}
             {currentVariant ? (
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setAiOpen(true)}
+                    type="button"
+                    className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Generar con IA
+                  </button>
+                </div>
                 <div>
                   <textarea
                     value={currentVariant.content}
@@ -328,6 +377,65 @@ export default function NewPostPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal: Generar con IA */}
+      {aiOpen && currentVariant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 p-5">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-blue-600" />
+                Generar con IA para {currentVariant.displayName}
+              </h3>
+              <button onClick={() => setAiOpen(false)} className="rounded p-1 hover:bg-gray-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tema o idea del post</label>
+                <textarea
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Ej: Lanzamiento de nuestro nuevo servicio de consultoría para PyMEs..."
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+
+              <button
+                onClick={generateWithAI}
+                disabled={aiLoading || aiTopic.trim().length < 3}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {aiLoading ? 'Generando con Claude...' : 'Generar 3 variantes'}
+              </button>
+
+              {aiSuggestions.map((s, i) => (
+                <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500">Sugerencia {i + 1}</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-900">{s.content}</p>
+                  {s.hashtags.length > 0 && (
+                    <p className="text-xs text-blue-600">
+                      {s.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
+                    </p>
+                  )}
+                  <p className="text-xs italic text-gray-500">💡 {s.rationale}</p>
+                  <button
+                    onClick={() => applyAISuggestion(s)}
+                    className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                  >
+                    Usar este texto
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
