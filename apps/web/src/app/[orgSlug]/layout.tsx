@@ -11,6 +11,9 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   const { orgSlug } = await params
   const supabase = await createServerSupabaseClient()
 
+  // Si Supabase no esta configurado, redirigir a home
+  if (!supabase) redirect('/')
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
