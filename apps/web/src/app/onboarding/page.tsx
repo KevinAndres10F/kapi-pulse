@@ -81,39 +81,23 @@ export default function OnboardingPage() {
       return
     }
 
-    // Crear la organización
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name, slug, timezone })
-      .select()
-      .single()
+    // Crear org + membership owner atómicamente via RPC (evita race con RLS).
+    const { data: org, error: orgError } = await supabase.rpc(
+      'create_organization_with_owner',
+      { p_name: name, p_slug: slug, p_timezone: timezone },
+    )
 
     if (orgError) {
       if (orgError.code === '23505') {
         setError('Ya existe una organización con ese nombre. Elige otro.')
       } else {
-        setError('Error al crear la organización. Intenta de nuevo.')
+        setError(orgError.message || 'Error al crear la organización. Intenta de nuevo.')
       }
       setLoading(false)
       return
     }
 
-    // Agregar al usuario como owner
-    const { error: memberError } = await supabase
-      .from('organization_members')
-      .insert({
-        organization_id: org.id,
-        user_id: user.id,
-        role: 'owner',
-      })
-
-    if (memberError) {
-      setError('Error al configurar tu membresía. Intenta de nuevo.')
-      setLoading(false)
-      return
-    }
-
-    router.push(`/${slug}/dashboard`)
+    router.push(`/${(org as { slug: string }).slug}/dashboard`)
   }
 
   if (checking) {
