@@ -44,7 +44,7 @@ En el panel DNS del registrador, crea estos registros:
 | A | `coolify` | IP del VPS | 300 |
 | CNAME | `www` | Dominio de Netlify de la web | 300 |
 
-Espera ~5 min a que propague. Verifica con `dig +short api.tudominio.com`.
+Espera ~5 min a que propague. Verifica con `dig +short api.kapisg.com`.
 
 ## 3. Instalar Coolify en el VPS
 
@@ -58,11 +58,11 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash
 
 Tarda 5-10 min. Al final imprime las credenciales temporales del panel.
 
-Accede a `http://IP_DEL_VPS:8000` (o `https://coolify.tudominio.com` si ya
+Accede a `http://IP_DEL_VPS:8000` (o `https://coolify.kapisg.com` si ya
 apuntaste DNS) y crea tu cuenta de admin.
 
 En **Settings → Instance**, configura:
-- Public URL: `https://coolify.tudominio.com`
+- Public URL: `https://coolify.kapisg.com`
 - Habilita **Auto-update** (parches automáticos)
 
 Coolify pedirá apuntar el dominio `coolify.*` con TLS automático — déjalo
@@ -98,12 +98,12 @@ Para empezar prefiere Upstash — menos cosas que se pueden romper en el VPS.
    - **Dockerfile Location**: `apps/api/Dockerfile`
    - **Build Context**: `.` (raíz)
    - **Port**: `3001`
-   - **Domain**: `https://api.tudominio.com`
+   - **Domain**: `https://api.kapisg.com`
 4. **Environment Variables** (pega todas estas, valores reales):
    ```
    NODE_ENV=production
-   APP_URL=https://www.tudominio.com
-   API_URL=https://api.tudominio.com
+   APP_URL=https://www.kapisg.com
+   API_URL=https://api.kapisg.com
    PORT=3001
    SUPABASE_URL=https://zouznrwrirsisdqipcfb.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=<copiar de Supabase Dashboard>
@@ -111,14 +111,14 @@ Para empezar prefiere Upstash — menos cosas que se pueden romper en el VPS.
    TOKEN_ENCRYPTION_KEY=<openssl rand -hex 32 — guárdala segura>
    META_APP_ID=
    META_APP_SECRET=
-   META_REDIRECT_URI=https://api.tudominio.com/api/callback/meta
+   META_REDIRECT_URI=https://api.kapisg.com/api/callback/meta
    META_GRAPH_VERSION=v25.0
    LINKEDIN_CLIENT_ID=
    LINKEDIN_CLIENT_SECRET=
-   LINKEDIN_REDIRECT_URI=https://api.tudominio.com/api/callback/linkedin
+   LINKEDIN_REDIRECT_URI=https://api.kapisg.com/api/callback/linkedin
    ```
 5. **Deploy** → Coolify hace el build (5-10 min la primera vez) y arranca
-6. Verifica: `curl https://api.tudominio.com/health` → `{"status":"healthy"}`
+6. Verifica: `curl https://api.kapisg.com/health` → `{"status":"healthy"}`
 
 ### App 2: `kapi-worker`
 
@@ -151,7 +151,7 @@ En Netlify → Site settings → Environment variables, agrega/actualiza:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://zouznrwrirsisdqipcfb.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
-NEXT_PUBLIC_API_URL=https://api.tudominio.com
+NEXT_PUBLIC_API_URL=https://api.kapisg.com
 ```
 
 Trigger un nuevo deploy. Listo.
@@ -166,7 +166,7 @@ configura webhook para esa rama.
 
 ## Checklist de validación post-despliegue
 
-- [ ] `curl https://api.tudominio.com/health` → 200 OK
+- [ ] `curl https://api.kapisg.com/health` → 200 OK
 - [ ] Logs de `kapi-worker` muestran "conectado a Redis"
 - [ ] Signup en la web crea fila en `kapi_pulse.profiles` (verificar en Supabase SQL editor)
 - [ ] Conectar LinkedIn redirige correctamente y guarda la cuenta
