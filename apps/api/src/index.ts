@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import 'dotenv/config'
 import { connect } from './routes/connect'
+import { posts } from './routes/posts'
 
 const app = new Hono()
 
@@ -20,6 +21,9 @@ app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toIS
 // OAuth connect/callback routes
 app.route('/api/connect', connect)
 app.route('/api', connect) // Para /api/callback/:provider
+
+// Posts routes
+app.route('/api/posts', posts)
 
 // API de cuentas sociales
 app.get('/api/social-accounts', async (c) => {
