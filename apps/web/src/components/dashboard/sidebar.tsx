@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -66,10 +66,18 @@ export function Sidebar({
   const router = useRouter()
   const supabase = createClient()
 
-  // Cerrar drawer al cambiar de pagina
+  // Ref a la callback de cerrar para no inflar deps de useEffect:
+  // si depende directamente del prop, una callback nueva en cada render
+  // del padre dispara el effect y cierra el drawer apenas se abre.
+  const onMobileCloseRef = useRef(onMobileClose)
   useEffect(() => {
-    onMobileClose?.()
-  }, [pathname, onMobileClose])
+    onMobileCloseRef.current = onMobileClose
+  }, [onMobileClose])
+
+  // Cerrar drawer al cambiar de pagina (solo cuando cambia el path)
+  useEffect(() => {
+    onMobileCloseRef.current?.()
+  }, [pathname])
 
   // Cerrar dropdowns internos cuando se cierra el drawer
   useEffect(() => {

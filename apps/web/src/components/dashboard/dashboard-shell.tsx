@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './sidebar'
 
@@ -38,6 +38,12 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Estable a traves de renders. Sin esto, cada render del Shell crea una
+  // funcion nueva, lo que dispara los useEffect de Sidebar que la tienen
+  // en sus deps -> el drawer se cierra apenas se abre (loop visible como
+  // "se cuelga").
+  const closeMobile = useCallback(() => setMobileOpen(false), [])
 
   // Body scroll lock cuando el drawer está abierto (evita scroll fantasma del fondo)
   useEffect(() => {
@@ -79,7 +85,7 @@ export function DashboardShell({
         userName={userName}
         userEmail={userEmail}
         mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        onMobileClose={closeMobile}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
