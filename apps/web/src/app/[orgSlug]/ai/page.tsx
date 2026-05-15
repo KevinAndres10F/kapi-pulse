@@ -3,9 +3,25 @@
 import { useState } from 'react'
 import { Sparkles, Wand2, Search, Copy, Check, Loader2, AlertCircle } from 'lucide-react'
 
-// Llamamos same-origin. Next.js (next.config.ts → rewrites) proxea
-// /api/ai/* al backend real. Asi evitamos CORS / mixed-content y no
-// dependemos de NEXT_PUBLIC_API_URL en el browser.
+// Llamamos directo al API (no via Netlify proxy) porque Claude puede tardar
+// >26s y el proxy CDN de Netlify timea con 504 HTML. El API tiene que tener
+// el origen del front en ALLOWED_ORIGINS para que CORS pase.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+async function parseJsonOr(res: Response): Promise<{ data: any; error: string | null }> {
+  const text = await res.text()
+  try {
+    return { data: JSON.parse(text), error: null }
+  } catch {
+    const snippet = text.slice(0, 120).replace(/\s+/g, ' ').trim()
+    return {
+      data: null,
+      error: `Respuesta no-JSON del API (HTTP ${res.status}). ${
+        res.status >= 500 ? 'Servidor caido o timeout.' : 'Endpoint inexistente?'
+      } Snippet: "${snippet}..."`,
+    }
+  }
+}
 
 const PLATFORMS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -103,7 +119,7 @@ function GenerateTab() {
     setVariants([])
 
     try {
-      const res = await fetch(`/api/ai/generate`, {
+      const res = await fetch(`${API_URL}/api/ai/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,7 +130,11 @@ function GenerateTab() {
           n_variants: nVariants,
         }),
       })
-      const data = await res.json()
+      const { data, error: parseErr } = await parseJsonOr(res)
+      if (parseErr) {
+        setError(parseErr)
+        return
+      }
       if (!res.ok) {
         setError(data.error?.detail || data.error || `Error ${res.status}`)
         return
@@ -302,7 +322,7 @@ function ImproveTab() {
     setResult(null)
 
     try {
-      const res = await fetch(`/api/ai/improve`, {
+      const res = await fetch(`${API_URL}/api/ai/improve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +331,11 @@ function ImproveTab() {
           goal: goal || undefined,
         }),
       })
-      const data = await res.json()
+      const { data, error: parseErr } = await parseJsonOr(res)
+      if (parseErr) {
+        setError(parseErr)
+        return
+      }
       if (!res.ok) {
         setError(data.error?.detail || data.error || `Error ${res.status}`)
         return
@@ -508,7 +532,7 @@ function AnalyzeTab() {
     setResult(null)
 
     try {
-      const res = await fetch(`/api/ai/analyze-competitors`, {
+      const res = await fetch(`${API_URL}/api/ai/analyze-competitors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -523,7 +547,11 @@ function AnalyzeTab() {
           })),
         }),
       })
-      const data = await res.json()
+      const { data, error: parseErr } = await parseJsonOr(res)
+      if (parseErr) {
+        setError(parseErr)
+        return
+      }
       if (!res.ok) {
         setError(data.error?.detail || data.error || `Error ${res.status}`)
         return
