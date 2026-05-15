@@ -12,10 +12,10 @@ import { supabaseAdmin } from './lib/supabase'
 const app = new Hono()
 
 // CORS: aceptamos lista de origenes separados por coma en ALLOWED_ORIGINS
-// (fallback a APP_URL para retrocompat). El IA Editor llama a este API
-// DIRECTAMENTE desde el browser para evitar timeouts del proxy de Netlify
-// en respuestas largas de Claude (>26s), asi que el origen del front
-// tiene que estar en la lista.
+// (fallback a APP_URL para retrocompat). Soportamos wildcards de subdominio
+// con sintaxis "*.netlify.app" para que los preview deploys tambien pasen.
+// El IA Editor llama al API DIRECTAMENTE desde el browser para evitar
+// timeouts del proxy de Netlify (>26s en respuestas largas de Claude).
 const allowedOrigins = (
   process.env.ALLOWED_ORIGINS ||
   process.env.APP_URL ||
@@ -25,14 +25,32 @@ const allowedOrigins = (
   .map((s) => s.trim())
   .filter(Boolean)
 
+function originMatches(origin: string): boolean {
+  for (const allowed of allowedOrigins) {
+    if (allowed === '*' || allowed === origin) return true
+    // wildcard de subdominio: "*.netlify.app" matchea "https://foo.netlify.app"
+    if (allowed.startsWith('*.')) {
+      const suffix = allowed.slice(1) // ".netlify.app"
+      try {
+        const host = new URL(origin).host
+        if (host.endsWith(suffix.slice(1)) && host !== suffix.slice(1)) {
+          return true
+        }
+      } catch {
+        // origin no es URL valida — ignorar
+      }
+    }
+  }
+  return false
+}
+
 app.use('*', logger())
 app.use(
   '*',
   cors({
     origin: (origin) => {
       if (!origin) return origin
-      if (allowedOrigins.includes('*')) return origin
-      return allowedOrigins.includes(origin) ? origin : null
+      return originMatches(origin) ? origin : null
     },
     credentials: true,
   }),
