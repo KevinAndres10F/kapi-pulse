@@ -12,6 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { createDecipheriv } from 'node:crypto'
 
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm'
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0'
@@ -26,7 +27,6 @@ function getEncryptionKey(): Buffer {
 }
 
 function decryptToken(encryptedStr: string): string {
-  const { createDecipheriv } = require('node:crypto')
   const key = getEncryptionKey()
   const [ivHex, authTagHex, encrypted] = encryptedStr.split(':')
   const iv = Buffer.from(ivHex, 'hex')

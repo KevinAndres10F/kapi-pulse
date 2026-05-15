@@ -5,9 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-
-// Importaciones dinámicas para encryption y providers
-// (en producción estos estarían en un package compartido)
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm'
 
@@ -18,7 +16,6 @@ function getEncryptionKey(): Buffer {
 }
 
 function decryptToken(encryptedStr: string): string {
-  const { createDecipheriv } = require('node:crypto')
   const key = getEncryptionKey()
   const [ivHex, authTagHex, encrypted] = encryptedStr.split(':')
   const iv = Buffer.from(ivHex, 'hex')
@@ -31,7 +28,6 @@ function decryptToken(encryptedStr: string): string {
 }
 
 function encryptToken(plaintext: string): string {
-  const { createCipheriv, randomBytes } = require('node:crypto')
   const key = getEncryptionKey()
   const iv = randomBytes(16)
   const cipher = createCipheriv(ENCRYPTION_ALGORITHM, key, iv)
