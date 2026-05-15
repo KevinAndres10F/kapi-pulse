@@ -100,5 +100,11 @@ select distinct on (social_account_id)
 from kapi_pulse.account_metrics
 order by social_account_id, period_start desc;
 
+-- Por default Postgres crea vistas como SECURITY DEFINER, lo que bypasea
+-- las RLS policies del usuario que consulta. Las pasamos a INVOKER para
+-- que respeten las policies de los miembros de la org.
+alter view kapi_pulse.post_metrics_latest set (security_invoker = true);
+alter view kapi_pulse.account_metrics_latest set (security_invoker = true);
+
 grant select on kapi_pulse.post_metrics_latest to anon, authenticated, service_role;
 grant select on kapi_pulse.account_metrics_latest to anon, authenticated, service_role;
