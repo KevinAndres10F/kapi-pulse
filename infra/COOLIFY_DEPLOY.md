@@ -188,7 +188,13 @@ En Netlify → Site settings → Environment variables, agrega/actualiza:
 NEXT_PUBLIC_SUPABASE_URL=https://zouznrwrirsisdqipcfb.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 NEXT_PUBLIC_API_URL=https://api.kapisg.com
+API_URL=https://api.kapisg.com
 ```
+
+`API_URL` (server-side) lo usa el rewrite de Next.js para proxear
+`/api/ai/*` al backend y evitar CORS / mixed-content desde el browser.
+`NEXT_PUBLIC_API_URL` queda para los fetches directos (posts, social
+accounts) que todavía van client → api.
 
 Trigger un nuevo deploy. Listo.
 
