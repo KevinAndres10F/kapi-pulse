@@ -11,11 +11,32 @@ import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
 
+// CORS: aceptamos lista de origenes separados por coma en ALLOWED_ORIGINS
+// (fallback a APP_URL para retrocompat). El IA Editor llama a este API
+// DIRECTAMENTE desde el browser para evitar timeouts del proxy de Netlify
+// en respuestas largas de Claude (>26s), asi que el origen del front
+// tiene que estar en la lista.
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS ||
+  process.env.APP_URL ||
+  'http://localhost:3000'
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
 app.use('*', logger())
-app.use('*', cors({
-  origin: process.env.APP_URL || 'http://localhost:3000',
-  credentials: true,
-}))
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      if (!origin) return origin
+      if (allowedOrigins.includes('*')) return origin
+      return allowedOrigins.includes(origin) ? origin : null
+    },
+    credentials: true,
+  }),
+)
 
 // Health check
 app.get('/', (c) => c.json({ service: 'kapi-pulse-api', status: 'ok' }))
