@@ -71,6 +71,14 @@ export function Sidebar({
     onMobileClose?.()
   }, [pathname, onMobileClose])
 
+  // Cerrar dropdowns internos cuando se cierra el drawer
+  useEffect(() => {
+    if (!mobileOpen) {
+      setOrgMenuOpen(false)
+      setUserMenuOpen(false)
+    }
+  }, [mobileOpen])
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -78,26 +86,31 @@ export function Sidebar({
 
   return (
     <>
-      {/* Backdrop solo móvil */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={onMobileClose}
-          aria-hidden="true"
-        />
-      )}
+      {/* Backdrop solo móvil — fade in/out, intercepta tap fuera del drawer */}
+      <div
+        onClick={onMobileClose}
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 ease-out lg:hidden ${
+          mobileOpen
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0'
+        }`}
+      />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full w-72 flex-col border-r border-gray-200 bg-white shadow-xl transition-transform duration-300 ease-out will-change-transform lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
+        role="dialog"
+        aria-modal={mobileOpen ? 'true' : undefined}
+        aria-label="Menú de navegación"
       >
         {/* Org Switcher + close button (solo móvil) */}
         <div className="relative border-b border-gray-200 p-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setOrgMenuOpen(!orgMenuOpen)}
-              className="flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-gray-50"
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-gray-50"
             >
               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
                 {currentOrg.name.charAt(0).toUpperCase()}
@@ -106,11 +119,15 @@ export function Sidebar({
                 <p className="truncate text-sm font-semibold text-gray-900">{currentOrg.name}</p>
                 <p className="text-xs text-gray-500">{userRole}</p>
               </div>
-              <ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-400" />
+              <ChevronDown
+                className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform ${
+                  orgMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
             </button>
             <button
               onClick={onMobileClose}
-              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 lg:hidden"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 lg:hidden"
               aria-label="Cerrar menú"
             >
               <X className="h-5 w-5" />
@@ -118,7 +135,7 @@ export function Sidebar({
           </div>
 
           {orgMenuOpen && (
-            <div className="absolute left-4 right-4 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div className="absolute left-4 right-4 top-full z-10 mt-1 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               {organizations.map((org) => (
                 <Link
                   key={org.id}
@@ -156,13 +173,13 @@ export function Sidebar({
                 <li key={item.href}>
                   <Link
                     href={href}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
                     {item.label}
                   </Link>
                 </li>
