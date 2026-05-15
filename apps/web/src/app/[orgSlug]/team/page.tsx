@@ -113,7 +113,7 @@ export default function TeamPage() {
           <UserPlus className="h-5 w-5" />
           Invitar miembro
         </h2>
-        <form onSubmit={handleInvite} className="mt-4 flex gap-3">
+        <form onSubmit={handleInvite} className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
             type="email"
             value={inviteEmail}
@@ -122,22 +122,24 @@ export default function TeamPage() {
             required
             className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
-          <select
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2"
-          >
-            <option value="admin">Admin</option>
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
-          </select>
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            Invitar
-          </button>
+          <div className="flex gap-3">
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 sm:flex-initial"
+            >
+              <option value="admin">Admin</option>
+              <option value="editor">Editor</option>
+              <option value="viewer">Viewer</option>
+            </select>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Invitar
+            </button>
+          </div>
         </form>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         {success && <p className="mt-2 text-sm text-green-600">{success}</p>}

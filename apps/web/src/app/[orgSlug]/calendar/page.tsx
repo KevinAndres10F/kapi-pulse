@@ -90,17 +90,17 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <CalendarIcon className="h-6 w-6" /> Calendario
           </h1>
           <p className="mt-1 text-gray-600">Visualiza y programa tus publicaciones.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center rounded-lg border border-gray-200 bg-white">
             <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-2 hover:bg-gray-50"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="px-4 text-sm font-semibold capitalize">{monthName}</span>
+            <span className="px-3 text-sm font-semibold capitalize sm:px-4">{monthName}</span>
             <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-2 hover:bg-gray-50"><ChevronRight className="h-4 w-4" /></button>
           </div>
           <button onClick={() => router.push(`/${orgSlug}/calendar/new`)} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
@@ -109,35 +109,38 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-          {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-semibold text-gray-500 uppercase">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
-          {getDaysInMonth().map((day, i) => {
-            const dayPosts = day.isCurrentMonth ? getPostsForDay(day.date) : []
-            return (
-              <div key={i} className={`min-h-[100px] p-1.5 ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
-                <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday(day.date) && day.isCurrentMonth ? 'bg-blue-600 text-white font-bold' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-300'}`}>{day.date}</span>
-                <div className="mt-1 space-y-1">
-                  {dayPosts.slice(0, 3).map((post) => (
-                    <div key={post.id} className={`truncate rounded px-1.5 py-0.5 text-xs cursor-pointer hover:opacity-80 ${STATUS_COLORS[post.status] || 'bg-gray-100'}`}>
-                      <span className="font-medium">{post.scheduled_at && new Date(post.scheduled_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
-                      {' '}{post.post_variants.map((v) => PROVIDER_EMOJI[v.social_accounts?.provider || ''] || '').join(' ')}
-                      {' '}{post.title || (post.post_variants[0]?.content || '').slice(0, 20)}
-                    </div>
-                  ))}
-                  {dayPosts.length > 3 && <span className="text-xs text-gray-400">+{dayPosts.length - 3} mas</span>}
+      {/* Scroll horizontal en móvil — un calendario de 7 cols no entra abajo de ~640px */}
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="min-w-[640px]">
+          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+            {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((d) => (
+              <div key={d} className="py-2 text-center text-xs font-semibold uppercase text-gray-500">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
+            {getDaysInMonth().map((day, i) => {
+              const dayPosts = day.isCurrentMonth ? getPostsForDay(day.date) : []
+              return (
+                <div key={i} className={`min-h-[90px] p-1.5 sm:min-h-[100px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday(day.date) && day.isCurrentMonth ? 'bg-blue-600 font-bold text-white' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-300'}`}>{day.date}</span>
+                  <div className="mt-1 space-y-1">
+                    {dayPosts.slice(0, 3).map((post) => (
+                      <div key={post.id} className={`cursor-pointer truncate rounded px-1.5 py-0.5 text-xs hover:opacity-80 ${STATUS_COLORS[post.status] || 'bg-gray-100'}`}>
+                        <span className="font-medium">{post.scheduled_at && new Date(post.scheduled_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
+                        {' '}{post.post_variants.map((v) => PROVIDER_EMOJI[v.social_accounts?.provider || ''] || '').join(' ')}
+                        {' '}{post.title || (post.post_variants[0]?.content || '').slice(0, 20)}
+                      </div>
+                    ))}
+                    {dayPosts.length > 3 && <span className="text-xs text-gray-400">+{dayPosts.length - 3} mas</span>}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-4 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500">
         {Object.entries(STATUS_COLORS).map(([status, className]) => (
           <div key={status} className="flex items-center gap-1.5">
             <span className={`inline-block h-3 w-3 rounded ${className.split(' ')[0]}`} />

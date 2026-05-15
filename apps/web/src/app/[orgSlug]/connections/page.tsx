@@ -115,9 +115,9 @@ export default function ConnectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <Link2 className="h-6 w-6" />
             Conexiones
           </h1>
@@ -125,7 +125,7 @@ export default function ConnectionsPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700"
+          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 sm:justify-start"
         >
           <Plus className="h-4 w-4" />
           Conectar red social

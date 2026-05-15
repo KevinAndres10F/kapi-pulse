@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Sidebar } from '@/components/dashboard/sidebar'
+import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 
 interface OrgLayoutProps {
   children: React.ReactNode
@@ -47,17 +47,14 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   }))
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar
-        currentOrg={org}
-        organizations={organizations}
-        userRole={membership.role}
-        userName={user.user_metadata?.full_name || user.email || ''}
-        userEmail={user.email || ''}
-      />
-      <main className="flex-1 overflow-auto p-6">
-        {children}
-      </main>
-    </div>
+    <DashboardShell
+      currentOrg={org}
+      organizations={organizations}
+      userRole={membership.role}
+      userName={user.user_metadata?.full_name || user.email || ''}
+      userEmail={user.email || ''}
+    >
+      {children}
+    </DashboardShell>
   )
 }
