@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './sidebar'
 
@@ -23,7 +23,11 @@ interface DashboardShellProps {
 
 /**
  * Shell del dashboard. Server component (layout.tsx) hace auth y carga
- * datos; este client component maneja el toggle del drawer móvil.
+ * datos; este client component maneja el toggle del drawer móvil:
+ *   - body scroll lock cuando está abierto
+ *   - ESC key cierra
+ *   - resize a desktop (>=1024px) cierra automaticamente para evitar
+ *     estado inconsistente al rotar el dispositivo
  */
 export function DashboardShell({
   currentOrg,
@@ -34,6 +38,37 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Body scroll lock cuando el drawer está abierto (evita scroll fantasma del fondo)
+  useEffect(() => {
+    if (mobileOpen) {
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = previousOverflow
+      }
+    }
+  }, [mobileOpen])
+
+  // ESC cierra el drawer
+  useEffect(() => {
+    if (!mobileOpen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [mobileOpen])
+
+  // Si el viewport pasa a desktop (>=1024px) mientras el drawer está abierto,
+  // lo reseteo para que no quede el state inconsistente al rotar.
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 1024 && mobileOpen) setMobileOpen(false)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [mobileOpen])
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -49,11 +84,12 @@ export function DashboardShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar móvil */}
-        <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 shadow-sm lg:hidden">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 active:bg-gray-200"
             aria-label="Abrir menú"
+            aria-expanded={mobileOpen}
           >
             <Menu className="h-5 w-5" />
           </button>
