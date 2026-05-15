@@ -31,31 +31,36 @@ export interface PublishResult {
 
 export interface InsightsData {
   followers?: number
+  following?: number
+  postsCount?: number
   reach?: number
   impressions?: number
+  profileViews?: number
   engagement?: number
-  metrics: Record<string, unknown>
+  raw: Record<string, unknown>
+}
+
+export interface PostInsightsData {
+  impressions?: number
+  reach?: number
+  likes?: number
+  comments?: number
+  shares?: number
+  saves?: number
+  clicks?: number
+  videoViews?: number
+  raw: Record<string, unknown>
 }
 
 export interface SocialProvider {
-  /** Nombre del proveedor */
   readonly name: string
-
-  /** Genera la URL de autorización OAuth */
   getAuthUrl(state: string, redirectUri: string): string
-
-  /** Intercambia el código de autorización por tokens */
   exchangeCode(code: string, redirectUri: string): Promise<OAuthTokens>
-
-  /** Renueva el access token usando el refresh token */
   refreshTokens(refreshToken: string): Promise<OAuthTokens>
-
-  /** Obtiene el perfil de la cuenta conectada */
   getProfile(accessToken: string): Promise<SocialProfile>
-
-  /** Publica contenido (implementar en fases posteriores) */
   publish?(accessToken: string, options: PublishOptions): Promise<PublishResult>
-
-  /** Obtiene métricas/insights (implementar en Fase 4) */
+  /** Métricas a nivel cuenta (followers, impressions de la página, etc) */
   getInsights?(accessToken: string, externalId: string): Promise<InsightsData>
+  /** Métricas de un post específico (impressions, likes, comments, etc) */
+  getPostInsights?(accessToken: string, externalPostId: string): Promise<PostInsightsData>
 }

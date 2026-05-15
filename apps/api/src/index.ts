@@ -7,6 +7,7 @@ import { connect } from './routes/connect'
 import { callback } from './routes/callback'
 import { posts } from './routes/posts'
 import { ai } from './routes/ai'
+import { metrics } from './routes/metrics'
 import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
@@ -70,6 +71,9 @@ app.route('/api/posts', posts)
 
 // AI routes (proxy a apps/ai en la red interna)
 app.route('/api/ai', ai)
+
+// Metrics / analytics routes
+app.route('/api/metrics', metrics)
 
 // API de cuentas sociales
 app.get('/api/social-accounts', async (c) => {
