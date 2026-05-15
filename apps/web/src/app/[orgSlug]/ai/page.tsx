@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { Sparkles, Wand2, Search, Copy, Check, Loader2, AlertCircle } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+// Llamamos same-origin. Next.js (next.config.ts → rewrites) proxea
+// /api/ai/* al backend real. Asi evitamos CORS / mixed-content y no
+// dependemos de NEXT_PUBLIC_API_URL en el browser.
 
 const PLATFORMS = [
   { value: 'linkedin', label: 'LinkedIn' },
@@ -101,7 +103,7 @@ function GenerateTab() {
     setVariants([])
 
     try {
-      const res = await fetch(`${API_URL}/api/ai/generate`, {
+      const res = await fetch(`/api/ai/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -119,7 +121,11 @@ function GenerateTab() {
       }
       setVariants(data.variants || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red')
+      setError(
+        err instanceof Error
+          ? `No se pudo conectar con la API: ${err.message}`
+          : 'Error de red',
+      )
     } finally {
       setLoading(false)
     }
@@ -296,7 +302,7 @@ function ImproveTab() {
     setResult(null)
 
     try {
-      const res = await fetch(`${API_URL}/api/ai/improve`, {
+      const res = await fetch(`/api/ai/improve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -312,7 +318,11 @@ function ImproveTab() {
       }
       setResult({ analysis: data.analysis, variants: data.variants })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red')
+      setError(
+        err instanceof Error
+          ? `No se pudo conectar con la API: ${err.message}`
+          : 'Error de red',
+      )
     } finally {
       setLoading(false)
     }
@@ -498,7 +508,7 @@ function AnalyzeTab() {
     setResult(null)
 
     try {
-      const res = await fetch(`${API_URL}/api/ai/analyze-competitors`, {
+      const res = await fetch(`/api/ai/analyze-competitors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -520,7 +530,11 @@ function AnalyzeTab() {
       }
       setResult(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red')
+      setError(
+        err instanceof Error
+          ? `No se pudo conectar con la API: ${err.message}`
+          : 'Error de red',
+      )
     } finally {
       setLoading(false)
     }
