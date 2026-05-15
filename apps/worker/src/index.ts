@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { refreshExpiringTokens } from './jobs/refresh-tokens.js'
 import { publishPost } from './jobs/publish-post.js'
+import { syncAllMetrics } from './jobs/metrics-sync.js'
 
 const redisUrl = process.env.REDIS_URL
 
@@ -63,6 +64,8 @@ if (!redisUrl) {
       switch (job.name) {
         case 'refresh-tokens':
           return await refreshExpiringTokens()
+        case 'metrics-sync':
+          return await syncAllMetrics()
         default:
           console.warn(`[worker] Job de mantenimiento desconocido: ${job.name}`)
       }
@@ -73,8 +76,15 @@ if (!redisUrl) {
   // Programar refresh de tokens cada hora
   await maintenanceQueue.upsertJobScheduler(
     'refresh-tokens-hourly',
-    { every: 60 * 60 * 1000 }, // cada hora
+    { every: 60 * 60 * 1000 },
     { name: 'refresh-tokens' },
+  )
+
+  // Programar metrics-sync cada 6h
+  await maintenanceQueue.upsertJobScheduler(
+    'metrics-sync-6h',
+    { every: 6 * 60 * 60 * 1000 },
+    { name: 'metrics-sync' },
   )
 
   maintenanceWorker.on('completed', (job) => {
@@ -87,7 +97,7 @@ if (!redisUrl) {
 
   console.log('Worker de publicación iniciado (conectado a Redis)')
   console.log('  - Cola "publish": concurrency=5, retry=3 con backoff exponencial')
-  console.log('  - Cola "maintenance": refresh tokens cada 1h')
+  console.log('  - Cola "maintenance": refresh tokens 1h, metrics-sync 6h')
 }
 
 export {}

@@ -19,7 +19,12 @@
  *   - Refresh token dura 365 días, access token 60 días
  */
 
-import type { SocialProvider, OAuthTokens, SocialProfile } from './types'
+import type {
+  SocialProvider,
+  OAuthTokens,
+  SocialProfile,
+  PostInsightsData,
+} from './types'
 
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization'
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
@@ -115,6 +120,51 @@ export class LinkedInProvider implements SocialProvider {
       metadata: { email: data.email },
     }
   }
+
+  /**
+   * Insights de un post (UGC/Share) de LinkedIn — limitado al scope w_member_social.
+   * Sin Marketing Developer Platform no podemos pedir impressions/reach; solo likes
+   * y comments via socialActions. Devolvemos undefined en lo no disponible y dejamos
+   * que el frontend muestre "—" en esas métricas.
+   *
+   * Docs: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/social-actions
+   * externalPostId esperado: el URN crudo (ej. "urn:li:share:7012345678901234567"
+   * o "urn:li:ugcPost:7012345678901234567"). Si viene como activity URN, lo aceptamos.
+   */
+  async getPostInsights(
+    accessToken: string,
+    externalPostId: string,
+  ): Promise<PostInsightsData> {
+    const encodedUrn = encodeURIComponent(externalPostId)
+    const url = `${LINKEDIN_API}/socialActions/${encodedUrn}`
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'LinkedIn-Version': LINKEDIN_VERSION,
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+    })
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { message?: string }
+      throw new Error(
+        `LinkedIn socialActions failed: ${err.message || res.statusText} ` +
+          `(las métricas full de LinkedIn requieren Marketing Developer Platform)`,
+      )
+    }
+    const data = (await res.json()) as LinkedInSocialActions
+    return {
+      likes: data.likesSummary?.totalLikes ?? data.likesSummary?.aggregatedTotalLikes,
+      comments:
+        data.commentsSummary?.totalFirstLevelComments ??
+        data.commentsSummary?.aggregatedTotalComments,
+      raw: data as unknown as Record<string, unknown>,
+    }
+  }
+}
+
+type LinkedInSocialActions = {
+  likesSummary?: { totalLikes?: number; aggregatedTotalLikes?: number }
+  commentsSummary?: { totalFirstLevelComments?: number; aggregatedTotalComments?: number }
 }
 
 export const linkedInProvider = new LinkedInProvider()

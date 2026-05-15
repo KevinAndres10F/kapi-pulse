@@ -237,8 +237,104 @@ export interface Database {
         Update: Partial<Database['kapi_pulse']['Tables']['post_media']['Insert']>
         Relationships: []
       }
+      post_metrics: {
+        Row: {
+          id: string
+          post_variant_id: string
+          period_start: string
+          collected_at: string
+          impressions: number | null
+          reach: number | null
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          clicks: number | null
+          video_views: number | null
+          engagement_rate: number | null
+          raw: Json
+        }
+        Insert: {
+          id?: string
+          post_variant_id: string
+          period_start: string
+          collected_at?: string
+          impressions?: number | null
+          reach?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          clicks?: number | null
+          video_views?: number | null
+          engagement_rate?: number | null
+          raw?: Json
+        }
+        Update: Partial<Database['kapi_pulse']['Tables']['post_metrics']['Insert']>
+        Relationships: []
+      }
+      account_metrics: {
+        Row: {
+          id: string
+          social_account_id: string
+          period_start: string
+          collected_at: string
+          followers: number | null
+          following: number | null
+          posts_count: number | null
+          impressions: number | null
+          reach: number | null
+          profile_views: number | null
+          raw: Json
+        }
+        Insert: {
+          id?: string
+          social_account_id: string
+          period_start: string
+          collected_at?: string
+          followers?: number | null
+          following?: number | null
+          posts_count?: number | null
+          impressions?: number | null
+          reach?: number | null
+          profile_views?: number | null
+          raw?: Json
+        }
+        Update: Partial<Database['kapi_pulse']['Tables']['account_metrics']['Insert']>
+        Relationships: []
+      }
     }
-    Views: Record<string, never>
+    Views: {
+      post_metrics_latest: {
+        Row: {
+          post_variant_id: string
+          period_start: string
+          collected_at: string
+          impressions: number | null
+          reach: number | null
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          clicks: number | null
+          video_views: number | null
+          engagement_rate: number | null
+        }
+      }
+      account_metrics_latest: {
+        Row: {
+          social_account_id: string
+          period_start: string
+          collected_at: string
+          followers: number | null
+          following: number | null
+          posts_count: number | null
+          impressions: number | null
+          reach: number | null
+          profile_views: number | null
+        }
+      }
+    }
     Functions: {
       is_member_of: { Args: { org_id: string }; Returns: boolean }
       has_write_access: { Args: { org_id: string }; Returns: boolean }
