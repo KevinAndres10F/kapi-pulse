@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import generate, improve, analyze
+from routes import generate, improve, analyze, studio_copy
 
 load_dotenv()
 
@@ -50,6 +50,7 @@ async def health():
 app.include_router(generate.router)
 app.include_router(improve.router)
 app.include_router(analyze.router)
+app.include_router(studio_copy.router)
 
 
 if __name__ == "__main__":

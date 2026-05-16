@@ -38,6 +38,7 @@ async function proxy(c: any, path: string) {
 ai.post('/generate', (c) => proxy(c, '/api/ai/generate'))
 ai.post('/improve', (c) => proxy(c, '/api/ai/improve'))
 ai.post('/analyze-competitors', (c) => proxy(c, '/api/ai/analyze-competitors'))
+ai.post('/studio/copy', (c) => proxy(c, '/api/ai/studio/copy'))
 
 ai.get('/health', async (c) => {
   try {

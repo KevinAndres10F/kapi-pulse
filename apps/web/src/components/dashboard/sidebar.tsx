@@ -16,6 +16,9 @@ import {
   LogOut,
   Users,
   CreditCard,
+  Sparkles,
+  Folder,
+  Coins,
   X,
 } from 'lucide-react'
 
@@ -45,6 +48,9 @@ const NAV_ITEMS = [
   { href: 'calendar', label: 'Calendario', icon: Calendar },
   { href: 'analytics', label: 'Analíticas', icon: BarChart3 },
   { href: 'ai', label: 'IA Editorial', icon: Bot },
+  { href: 'studio', label: 'Studio', icon: Sparkles },
+  { href: 'library', label: 'Librería', icon: Folder },
+  { href: 'credits', label: 'Créditos', icon: Coins },
   { href: 'alerts', label: 'Alertas', icon: Bell },
   { href: 'team', label: 'Equipo', icon: Users },
   { href: 'billing', label: 'Facturación', icon: CreditCard },
