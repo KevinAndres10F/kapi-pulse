@@ -8,6 +8,10 @@ import { callback } from './routes/callback'
 import { posts } from './routes/posts'
 import { ai } from './routes/ai'
 import { metrics } from './routes/metrics'
+import { credits } from './routes/credits'
+import { assets } from './routes/assets'
+import { campaigns as studioCampaigns } from './routes/studio/campaigns'
+import { studioGenerate } from './routes/studio/generate'
 import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
@@ -74,6 +78,12 @@ app.route('/api/ai', ai)
 
 // Metrics / analytics routes
 app.route('/api/metrics', metrics)
+
+// Studio (generación visual con IA + créditos)
+app.route('/api/credits', credits)
+app.route('/api/assets', assets)
+app.route('/api/studio/campaigns', studioCampaigns)
+app.route('/api/studio/generate', studioGenerate)
 
 // API de cuentas sociales
 app.get('/api/social-accounts', async (c) => {
