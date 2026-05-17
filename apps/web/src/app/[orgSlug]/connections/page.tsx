@@ -54,6 +54,34 @@ const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle2; label: string; 
   error: { icon: XCircle, label: 'Error', className: 'text-red-600' },
 }
 
+function errorLabelFor(
+  code: string | null,
+  reason: string | null,
+  description: string | null,
+  message: string | null,
+): string {
+  if (!code) return ''
+
+  const baseMessages: Record<string, string> = {
+    access_denied: 'Rechazaste los permisos requeridos. Sin acceso a tus Pages no podemos publicar contenido en tu nombre.',
+    no_pages:
+      'Tu cuenta de Facebook no administra ninguna Page. Crea una Page de negocio o pide acceso a una existente, y reconectá.',
+    state_expired: 'La sesión de conexión expiró. Volvé a iniciar el flujo desde "Conectar red social".',
+    provider_unsupported: 'Este proveedor todavía no está soportado.',
+    db_error: 'No pudimos guardar la conexión en la base de datos. Intentá de nuevo.',
+    token_exchange_failed: 'Facebook rechazó el intercambio del código de autorización. Verificá que la app de Meta esté en modo Live y que el redirect URI esté registrado.',
+    user_denied: 'Cancelaste el inicio de sesión con Facebook.',
+    config_missing: 'La configuración OAuth del backend está incompleta. Revisá las variables de entorno.',
+  }
+
+  const reasonOrCode = reason || code
+  const base = baseMessages[reasonOrCode] || baseMessages[code] || `Error: ${code}`
+
+  if (message) return `${base}\n${message}`
+  if (description) return `${base}\n${decodeURIComponent(description)}`
+  return base
+}
+
 export default function ConnectionsPage() {
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const searchParams = useSearchParams()
@@ -66,6 +94,14 @@ export default function ConnectionsPage() {
 
   const successParam = searchParams.get('success')
   const errorParam = searchParams.get('error')
+  const errorMessageParam = searchParams.get('message')
+  const errorReasonParam = searchParams.get('error_reason')
+  const errorDescriptionParam = searchParams.get('error_description')
+  const providerParam = searchParams.get('provider')
+  const pagesParam = searchParams.get('pages')
+  const instagramParam = searchParams.get('instagram')
+
+  const errorLabel = errorLabelFor(errorParam, errorReasonParam, errorDescriptionParam, errorMessageParam)
 
   const loadAccounts = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -135,12 +171,29 @@ export default function ConnectionsPage() {
       {/* Mensajes de estado */}
       {successParam && (
         <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-green-800">
-          Cuenta conectada exitosamente.
+          <p className="font-medium">
+            {providerParam === 'meta' || providerParam === 'facebook'
+              ? 'Facebook + Instagram conectados.'
+              : 'Cuenta conectada exitosamente.'}
+          </p>
+          {(providerParam === 'meta' || providerParam === 'facebook') && pagesParam && (
+            <p className="mt-1 text-sm text-green-700">
+              {pagesParam} Page(s) de Facebook
+              {instagramParam && Number(instagramParam) > 0
+                ? ` y ${instagramParam} cuenta(s) de Instagram Business`
+                : ''}{' '}
+              vinculadas.
+            </p>
+          )}
         </div>
       )}
       {errorParam && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
-          Error al conectar: {errorParam}
+          <p className="font-medium">
+            No se pudo conectar
+            {providerParam ? ` con ${PROVIDER_CONFIG[providerParam]?.label || providerParam}` : ''}.
+          </p>
+          <p className="mt-1 whitespace-pre-line text-sm text-red-700">{errorLabel}</p>
         </div>
       )}
 

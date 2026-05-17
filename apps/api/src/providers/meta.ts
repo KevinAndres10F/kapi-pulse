@@ -68,11 +68,11 @@ export class MetaProvider implements SocialProvider {
 
     const res = await fetch(tokenUrl)
     if (!res.ok) {
-      const err = await res.json()
+      const err = (await res.json().catch(() => ({}))) as GraphError
       throw new Error(`Meta token exchange failed: ${err.error?.message || res.statusText}`)
     }
 
-    const data = await res.json()
+    const data = (await res.json()) as { access_token: string; expires_in?: number }
 
     // Paso 2: Intercambiar por long-lived token (60 días)
     const longLivedUrl = `${GRAPH_BASE}/oauth/access_token?${new URLSearchParams({
@@ -82,19 +82,38 @@ export class MetaProvider implements SocialProvider {
       fb_exchange_token: data.access_token,
     })}`
 
+    let finalAccessToken = data.access_token
+    let finalExpiresIn = data.expires_in || 3600
+
     const longRes = await fetch(longLivedUrl)
-    if (!longRes.ok) {
-      // Si falla, usar el short-lived
-      return {
-        accessToken: data.access_token,
-        expiresAt: new Date(Date.now() + (data.expires_in || 3600) * 1000),
-      }
+    if (longRes.ok) {
+      const longData = (await longRes.json()) as { access_token: string; expires_in?: number }
+      finalAccessToken = longData.access_token
+      finalExpiresIn = longData.expires_in || 5184000
+    } else {
+      console.warn(`[meta] long-lived token exchange failed, using short-lived`)
     }
 
-    const longData = await longRes.json()
+    // Paso 3: Consultar los scopes efectivamente concedidos por el usuario
+    let grantedScopes: string[] = []
+    try {
+      const permsRes = await fetch(
+        `${GRAPH_BASE}/me/permissions?access_token=${finalAccessToken}`,
+      )
+      if (permsRes.ok) {
+        const permsData = (await permsRes.json()) as { data?: Array<{ permission: string; status: string }> }
+        grantedScopes = (permsData.data || [])
+          .filter((p) => p.status === 'granted')
+          .map((p) => p.permission)
+      }
+    } catch (err) {
+      console.warn('[meta] could not fetch granted permissions:', err)
+    }
+
     return {
-      accessToken: longData.access_token,
-      expiresAt: new Date(Date.now() + (longData.expires_in || 5184000) * 1000), // ~60 días
+      accessToken: finalAccessToken,
+      expiresAt: new Date(Date.now() + finalExpiresIn * 1000),
+      scopes: grantedScopes,
     }
   }
 
@@ -112,7 +131,7 @@ export class MetaProvider implements SocialProvider {
       throw new Error('Meta token refresh failed — puede requerir reconexión')
     }
 
-    const data = await res.json()
+    const data = (await res.json()) as { access_token: string; expires_in?: number }
     return {
       accessToken: data.access_token,
       expiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),
@@ -125,10 +144,14 @@ export class MetaProvider implements SocialProvider {
     )
     if (!res.ok) throw new Error('No se pudo obtener el perfil de Meta')
 
-    const data = await res.json()
+    const data = (await res.json()) as {
+      id: string
+      name?: string
+      picture?: { data?: { url?: string } }
+    }
     return {
       externalId: data.id,
-      displayName: data.name,
+      displayName: data.name || '',
       avatarUrl: data.picture?.data?.url,
     }
   }
@@ -136,24 +159,27 @@ export class MetaProvider implements SocialProvider {
   /**
    * Obtiene las Pages de Facebook del usuario
    */
-  async getPages(accessToken: string) {
+  async getPages(accessToken: string): Promise<MetaPage[]> {
     const res = await fetch(
       `${GRAPH_BASE}/me/accounts?fields=id,name,access_token,picture.type(large),instagram_business_account&access_token=${accessToken}`,
     )
-    if (!res.ok) throw new Error('No se pudieron obtener las Pages')
-    const data = await res.json()
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as GraphError
+      throw new Error(`No se pudieron obtener las Pages: ${err.error?.message || res.statusText}`)
+    }
+    const data = (await res.json()) as { data?: MetaPage[] }
     return data.data || []
   }
 
   /**
    * Obtiene la cuenta de Instagram Business vinculada a una Page
    */
-  async getInstagramAccount(pageAccessToken: string, igAccountId: string) {
+  async getInstagramAccount(pageAccessToken: string, igAccountId: string): Promise<IgBusinessAccount | null> {
     const res = await fetch(
       `${GRAPH_BASE}/${igAccountId}?fields=id,username,name,profile_picture_url,followers_count&access_token=${pageAccessToken}`,
     )
     if (!res.ok) return null
-    return await res.json()
+    return (await res.json()) as IgBusinessAccount
   }
 
   /**
@@ -297,9 +323,25 @@ export class MetaProvider implements SocialProvider {
 
 // ============== Tipos y helpers para parsear respuestas de Graph API ==============
 
-type GraphError = { error?: { message?: string; code?: number } }
+type GraphError = { error?: { message?: string; code?: number; type?: string } }
 type InsightsEntry = { name: string; values: Array<{ value: number | Record<string, number> }> }
 type InsightsResponse = { data?: InsightsEntry[] }
+
+export type MetaPage = {
+  id: string
+  name: string
+  access_token: string
+  picture?: { data?: { url?: string } }
+  instagram_business_account?: { id: string }
+}
+
+export type IgBusinessAccount = {
+  id: string
+  username?: string
+  name?: string
+  profile_picture_url?: string
+  followers_count?: number
+}
 type IgProfile = {
   followers_count?: number
   follows_count?: number
