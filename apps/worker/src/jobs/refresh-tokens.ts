@@ -52,7 +52,7 @@ export async function refreshExpiringTokens() {
 
   const { data: accounts, error } = await supabase
     .from('social_accounts')
-    .select('id, provider, access_token_encrypted, refresh_token_encrypted, expires_at, organization_id')
+    .select('id, provider, access_token_encrypted, refresh_token_encrypted, expires_at, organization_id, metadata')
     .eq('status', 'active')
     .not('expires_at', 'is', null)
     .lt('expires_at', expiresBeforeDate)
@@ -78,9 +78,16 @@ export async function refreshExpiringTokens() {
 
       let newTokens: { accessToken: string; refreshToken?: string; expiresAt?: Date }
 
-      // Seleccionar la estrategia de refresh según el proveedor
-      if (account.provider === 'facebook' || account.provider === 'instagram') {
-        // Meta: renovar long-lived token
+      // Seleccionar la estrategia de refresh según el proveedor.
+      // Las cuentas IG conectadas por "Instagram Login" directo usan endpoint
+      // distinto al flow Meta — distinguimos por metadata.auth_method.
+      const metadata = (account.metadata || {}) as Record<string, unknown>
+      const authMethod = typeof metadata.auth_method === 'string' ? metadata.auth_method : null
+
+      if (account.provider === 'instagram' && authMethod === 'instagram_login') {
+        newTokens = await refreshInstagramLoginToken(currentToken)
+      } else if (account.provider === 'facebook' || account.provider === 'instagram') {
+        // Flow Meta tradicional (FB Page con IG Business vinculada)
         newTokens = await refreshMetaToken(currentToken)
       } else if (account.provider === 'linkedin') {
         if (!refreshToken) throw new Error('No hay refresh token para LinkedIn')
@@ -136,6 +143,31 @@ async function refreshMetaToken(currentToken: string) {
   if (!res.ok) throw new Error('Meta token refresh failed')
   const data = await res.json()
 
+  return {
+    accessToken: data.access_token,
+    expiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),
+  }
+}
+
+async function refreshInstagramLoginToken(currentToken: string) {
+  // Instagram Login long-lived token se renueva contra graph.instagram.com
+  // (no graph.facebook.com como el flow Meta tradicional).
+  const url = `https://graph.instagram.com/refresh_access_token?${new URLSearchParams({
+    grant_type: 'ig_refresh_token',
+    access_token: currentToken,
+  })}`
+
+  const res = await fetch(url)
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string }
+      error_message?: string
+    }
+    throw new Error(
+      `Instagram Login refresh failed: ${err.error_message || err.error?.message || res.statusText}`,
+    )
+  }
+  const data = (await res.json()) as { access_token: string; expires_in?: number }
   return {
     accessToken: data.access_token,
     expiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),

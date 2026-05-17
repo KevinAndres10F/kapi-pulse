@@ -13,12 +13,22 @@ function checkProviderConfig(name: string): string | null {
   switch (name) {
     case 'meta':
     case 'facebook':
-    case 'instagram':
       if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
         return 'META_APP_ID o META_APP_SECRET no están configurados en el backend.'
       }
       if (!process.env.API_URL) {
         return 'API_URL no está configurado. Es necesario para construir el redirect_uri que Facebook espera.'
+      }
+      return null
+    case 'instagram':
+      // Instagram Login (directo, sin Facebook Page) usa credenciales distintas
+      // — la "Instagram app" tiene su propio app_id/secret dentro del mismo
+      // proyecto de Meta.
+      if (!process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET) {
+        return 'INSTAGRAM_APP_ID o INSTAGRAM_APP_SECRET no están configurados en el backend.'
+      }
+      if (!process.env.API_URL) {
+        return 'API_URL no está configurado. Es necesario para construir el redirect_uri que Instagram espera.'
       }
       return null
     case 'linkedin':

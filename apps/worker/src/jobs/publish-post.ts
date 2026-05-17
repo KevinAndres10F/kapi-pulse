@@ -352,8 +352,26 @@ async function publishToFacebook(accessToken: string, params: PublishParams, med
 }
 
 // ---------- Instagram ----------
+/**
+ * Devuelve la base de Graph API que corresponde según cómo se conectó la
+ * cuenta IG:
+ *   - "instagram_login" (login directo con Instagram): graph.instagram.com
+ *   - resto (Meta/Facebook Login con Page vinculada): graph.facebook.com
+ *
+ * Los endpoints (/media, /media_publish, status_code) son idénticos, solo
+ * cambia el host y la versión de API que mejor se mapea.
+ */
+function resolveIgGraphBase(metadata?: Record<string, unknown>): string {
+  if (metadata?.auth_method === 'instagram_login') {
+    const ver = process.env.INSTAGRAM_GRAPH_VERSION || 'v22.0'
+    return `https://graph.instagram.com/${ver}`
+  }
+  const ver = process.env.META_GRAPH_VERSION || 'v25.0'
+  return `https://graph.facebook.com/${ver}`
+}
+
 async function publishToInstagram(accessToken: string, params: PublishParams, media: MediaRow[]): Promise<PublishProviderResult> {
-  const graphVersion = process.env.META_GRAPH_VERSION || 'v25.0'
+  const graphBase = resolveIgGraphBase(params.metadata)
   const igUserId = params.externalId
   const caption = buildMessage(params)
 
@@ -365,37 +383,37 @@ async function publishToInstagram(accessToken: string, params: PublishParams, me
 
   if (media.length === 1) {
     const isVideo = media[0].media_type === 'video'
-    const containerId = await createIgContainer(graphVersion, igUserId, accessToken, {
+    const containerId = await createIgContainer(graphBase, igUserId, accessToken, {
       ...(isVideo ? { video_url: urls[0], media_type: 'REELS' } : { image_url: urls[0] }),
       caption,
     })
-    await waitForIgContainer(graphVersion, containerId, accessToken)
-    return publishIgContainer(graphVersion, igUserId, accessToken, containerId)
+    await waitForIgContainer(graphBase, containerId, accessToken)
+    return publishIgContainer(graphBase, igUserId, accessToken, containerId)
   }
 
   // Carousel (max 10 items)
   const children: string[] = []
   for (let i = 0; i < Math.min(media.length, 10); i++) {
     const isVideo = media[i].media_type === 'video'
-    const childId = await createIgContainer(graphVersion, igUserId, accessToken, {
+    const childId = await createIgContainer(graphBase, igUserId, accessToken, {
       ...(isVideo ? { video_url: urls[i], media_type: 'VIDEO' } : { image_url: urls[i] }),
       is_carousel_item: true,
     })
-    await waitForIgContainer(graphVersion, childId, accessToken)
+    await waitForIgContainer(graphBase, childId, accessToken)
     children.push(childId)
   }
 
-  const carouselId = await createIgContainer(graphVersion, igUserId, accessToken, {
+  const carouselId = await createIgContainer(graphBase, igUserId, accessToken, {
     media_type: 'CAROUSEL',
     children: children.join(','),
     caption,
   })
-  await waitForIgContainer(graphVersion, carouselId, accessToken)
-  return publishIgContainer(graphVersion, igUserId, accessToken, carouselId)
+  await waitForIgContainer(graphBase, carouselId, accessToken)
+  return publishIgContainer(graphBase, igUserId, accessToken, carouselId)
 }
 
 async function createIgContainer(
-  graphVersion: string,
+  graphBase: string,
   igUserId: string,
   accessToken: string,
   fields: Record<string, unknown>,
@@ -406,7 +424,7 @@ async function createIgContainer(
   }
   params.set('access_token', accessToken)
 
-  const res = await fetch(`https://graph.facebook.com/${graphVersion}/${igUserId}/media`, {
+  const res = await fetch(`${graphBase}/${igUserId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),
@@ -423,7 +441,7 @@ async function createIgContainer(
 }
 
 async function waitForIgContainer(
-  graphVersion: string,
+  graphBase: string,
   containerId: string,
   accessToken: string,
   opts: { maxAttempts?: number; intervalMs?: number } = {},
@@ -433,7 +451,7 @@ async function waitForIgContainer(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const res = await fetch(
-      `https://graph.facebook.com/${graphVersion}/${containerId}?fields=status_code,status&access_token=${accessToken}`,
+      `${graphBase}/${containerId}?fields=status_code,status&access_token=${accessToken}`,
     )
     if (!res.ok) {
       throw new Error(`Instagram status check failed: ${res.status}`)
@@ -450,12 +468,12 @@ async function waitForIgContainer(
 }
 
 async function publishIgContainer(
-  graphVersion: string,
+  graphBase: string,
   igUserId: string,
   accessToken: string,
   containerId: string,
 ): Promise<PublishProviderResult> {
-  const res = await fetch(`https://graph.facebook.com/${graphVersion}/${igUserId}/media_publish`, {
+  const res = await fetch(`${graphBase}/${igUserId}/media_publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ creation_id: containerId, access_token: accessToken }).toString(),
