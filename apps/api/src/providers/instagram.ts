@@ -26,12 +26,19 @@ const IG_GRAPH_VERSION = process.env.INSTAGRAM_GRAPH_VERSION || 'v22.0'
 const IG_GRAPH_BASE = `https://graph.instagram.com/${IG_GRAPH_VERSION}`
 const IG_GRAPH_ROOT = 'https://graph.instagram.com'
 
-const IG_SCOPES = [
-  'instagram_business_basic',
-  'instagram_business_content_publish',
-  'instagram_business_manage_comments',
-  'instagram_business_manage_messages',
-].join(',')
+// Scopes minimos para conectar + publicar (los 2 que NO requieren App Review).
+// Si tu app ya tiene aprobados manage_comments / manage_messages podes sumarlos
+// via INSTAGRAM_EXTRA_SCOPES (coma-separados).
+// Incluir scopes que la app NO tiene approbados causa "Invalid platform app".
+const IG_BASE_SCOPES = ['instagram_business_basic', 'instagram_business_content_publish']
+
+function buildScopes(): string {
+  const extras = (process.env.INSTAGRAM_EXTRA_SCOPES || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return [...IG_BASE_SCOPES, ...extras].join(',')
+}
 
 interface IgTokenResponse {
   access_token: string
@@ -69,10 +76,13 @@ export class InstagramProvider implements SocialProvider {
       client_id: this.appId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: IG_SCOPES,
+      scope: buildScopes(),
       state,
     })
-    return `https://www.instagram.com/oauth/authorize?${params.toString()}`
+    // IMPORTANTE: el endpoint correcto es `api.instagram.com/oauth/authorize`
+    // (no `www.instagram.com/...`). Usar el host equivocado devuelve
+    // "Invalid platform app" aunque el client_id sea correcto.
+    return `https://api.instagram.com/oauth/authorize?${params.toString()}`
   }
 
   async exchangeCode(code: string, redirectUri: string): Promise<OAuthTokens> {
