@@ -302,25 +302,51 @@ generate.get('/jobs/:id/stream', withOrgAuth('viewer'), async (c) => {
 })
 
 // ============== Avatar catalog (proxy) ==============
+// Si HEYGEN_API_KEY no está configurada, devolvemos available=false en vez
+// de un 500 — el frontend usa eso para deshabilitar el step de UGC.
 generate.get('/avatars', withOrgAuth('viewer'), async (c) => {
+  if (!process.env.HEYGEN_API_KEY) {
+    c.header('cache-control', 'private, max-age=60')
+    return c.json({ avatars: [], available: false, reason: 'HEYGEN_API_KEY not configured' })
+  }
   try {
     const avatars = await listHeygenAvatars()
     c.header('cache-control', 'private, max-age=300')
-    return c.json({ avatars })
+    return c.json({ avatars, available: true })
   } catch (err) {
-    return c.json({ error: err instanceof Error ? err.message : 'unknown' }, 500)
+    return c.json({ avatars: [], available: false, reason: err instanceof Error ? err.message : 'unknown' })
   }
 })
 
 generate.get('/voices', withOrgAuth('viewer'), async (c) => {
+  if (!process.env.HEYGEN_API_KEY) {
+    c.header('cache-control', 'private, max-age=60')
+    return c.json({ voices: [], available: false, reason: 'HEYGEN_API_KEY not configured' })
+  }
   const language = c.req.query('language') || undefined
   try {
     const voices = await listHeygenVoices(language)
     c.header('cache-control', 'private, max-age=300')
-    return c.json({ voices })
+    return c.json({ voices, available: true })
   } catch (err) {
-    return c.json({ error: err instanceof Error ? err.message : 'unknown' }, 500)
+    return c.json({ voices: [], available: false, reason: err instanceof Error ? err.message : 'unknown' })
   }
+})
+
+// Capability flags para que el frontend sepa qué pasos están disponibles
+generate.get('/capabilities', withOrgAuth('viewer'), async (c) => {
+  c.header('cache-control', 'private, max-age=60')
+  return c.json({
+    image: Boolean(process.env.FAL_KEY),
+    video: Boolean(process.env.FAL_KEY),
+    avatar: Boolean(process.env.HEYGEN_API_KEY || process.env.HEDRA_API_KEY),
+    copy: true,
+    avatarProvider: process.env.HEYGEN_API_KEY
+      ? 'heygen'
+      : process.env.HEDRA_API_KEY
+        ? 'hedra'
+        : null,
+  })
 })
 
 export { generate as studioGenerate }

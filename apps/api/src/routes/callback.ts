@@ -8,6 +8,26 @@ import { consumePendingState } from '../lib/oauth-state'
 const callback = new Hono()
 
 /**
+ * Resolver el slug de la org para construir redirects con la ruta correcta.
+ * Si no se puede resolver, devolvemos string vacío y el redirect cae en
+ * `/connections` (la home de la app capturará la query string).
+ */
+async function resolveOrgSlug(orgId?: string): Promise<string> {
+  if (!orgId) return ''
+  const { data } = await supabaseAdmin
+    .from('organizations')
+    .select('slug')
+    .eq('id', orgId)
+    .maybeSingle()
+  return (data?.slug as string | undefined) || ''
+}
+
+function redirectToConnections(appUrl: string, orgSlug: string, qs: URLSearchParams): string {
+  const base = orgSlug ? `${appUrl}/${orgSlug}/connections` : `${appUrl}/connections`
+  return `${base}?${qs.toString()}`
+}
+
+/**
  * GET /api/callback/:provider
  * Callback OAuth: intercambia código por tokens, guarda la cuenta en DB.
  */
@@ -16,10 +36,27 @@ callback.get('/:provider', async (c) => {
   const code = c.req.query('code')
   const state = c.req.query('state')
   const error = c.req.query('error')
+  const errorReason = c.req.query('error_reason')
+  const errorDescription = c.req.query('error_description')
   const appUrl = process.env.APP_URL || 'http://localhost:3000'
 
+  // Si el usuario rechazó permisos o Meta devolvió error en el flow inicial,
+  // intentamos extraer el orgSlug del state ANTES de consumirlo para devolver
+  // al usuario a la página correcta.
   if (error) {
-    return c.redirect(`${appUrl}/connections?error=${encodeURIComponent(error)}`)
+    console.warn(`[oauth] ${providerName} error:`, { error, errorReason, errorDescription })
+    let orgSlug = ''
+    if (state) {
+      const pending = consumePendingState(state)
+      orgSlug = await resolveOrgSlug(pending?.orgId)
+    }
+    const qs = new URLSearchParams({
+      error,
+      ...(errorReason ? { error_reason: errorReason } : {}),
+      ...(errorDescription ? { error_description: errorDescription } : {}),
+      provider: providerName,
+    })
+    return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
   }
 
   if (!code || !state) {
@@ -28,31 +65,60 @@ callback.get('/:provider', async (c) => {
 
   const pending = consumePendingState(state)
   if (!pending) {
-    return c.json({ error: 'Estado OAuth inválido o expirado' }, 400)
+    // No tenemos forma de saber el orgSlug — redirigimos a la home.
+    const qs = new URLSearchParams({ error: 'state_expired', provider: providerName })
+    return c.redirect(redirectToConnections(appUrl, '', qs))
   }
 
   const provider = getProvider(providerName)
   if (!provider) {
-    return c.json({ error: `Proveedor "${providerName}" no soportado` }, 400)
+    const orgSlug = await resolveOrgSlug(pending.orgId)
+    const qs = new URLSearchParams({ error: 'provider_unsupported', provider: providerName })
+    return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
   }
+
+  const orgSlug = await resolveOrgSlug(pending.orgId)
 
   try {
     const redirectUri = `${process.env.API_URL}/api/callback/${providerName}`
     const tokens = await provider.exchangeCode(code, redirectUri)
-    const profile = await provider.getProfile(tokens.accessToken)
 
+    // Para Meta: el user-level token sólo lo usamos para descubrir Pages e IG.
+    // NO guardamos una "cuenta Facebook" con el user_id — esas entradas no son
+    // publicables y confunden el picker de destino.
+    if (providerName === 'meta' || providerName === 'facebook') {
+      const result = await saveMetaSubAccounts(tokens.accessToken, pending.orgId, pending.userId)
+
+      if (result.pages === 0) {
+        console.warn(`[oauth] meta connect succeeded but user has no Pages`, { orgId: pending.orgId })
+        const qs = new URLSearchParams({
+          error: 'no_pages',
+          provider: providerName,
+          message: 'No encontramos Pages de Facebook administrables. Crea o pide acceso a una Page antes de conectar.',
+        })
+        return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
+      }
+
+      const qs = new URLSearchParams({
+        success: 'true',
+        provider: providerName,
+        pages: String(result.pages),
+        instagram: String(result.instagram),
+      })
+      return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
+    }
+
+    // Resto de providers (LinkedIn, etc.) — perfil al nivel de usuario es la cuenta publicable.
+    const profile = await provider.getProfile(tokens.accessToken)
     const accessTokenEncrypted = encryptToken(tokens.accessToken)
     const refreshTokenEncrypted = tokens.refreshToken ? encryptToken(tokens.refreshToken) : null
-
-    let accountProvider = providerName
-    if (providerName === 'meta') accountProvider = 'facebook'
 
     const { error: dbError } = await supabaseAdmin
       .from('social_accounts')
       .upsert(
         {
           organization_id: pending.orgId,
-          provider: accountProvider,
+          provider: providerName,
           external_id: profile.externalId,
           display_name: profile.displayName,
           avatar_url: profile.avatarUrl,
@@ -68,39 +134,47 @@ callback.get('/:provider', async (c) => {
       )
 
     if (dbError) {
-      console.error('Error guardando cuenta social:', dbError)
-      return c.json({ error: 'Error guardando la conexión' }, 500)
+      console.error('[oauth] Error guardando cuenta social:', dbError)
+      const qs = new URLSearchParams({ error: 'db_error', message: dbError.message, provider: providerName })
+      return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
     }
 
-    // Para Meta: también descubrir Pages e Instagram accounts
-    if (providerName === 'meta' || providerName === 'facebook') {
-      try {
-        await saveMetaSubAccounts(tokens.accessToken, pending.orgId, pending.userId)
-      } catch (err) {
-        console.error('Error guardando sub-cuentas Meta:', err)
-      }
-    }
-
-    const { data: org } = await supabaseAdmin
-      .from('organizations')
-      .select('slug')
-      .eq('id', pending.orgId)
-      .single()
-
-    const orgSlug = org?.slug || ''
-    return c.redirect(`${appUrl}/${orgSlug}/connections?success=true&provider=${providerName}`)
+    const qs = new URLSearchParams({ success: 'true', provider: providerName })
+    return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
   } catch (err) {
-    console.error(`Error en callback ${providerName}:`, err)
-    return c.redirect(`${appUrl}/connections?error=token_exchange_failed`)
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[oauth] callback ${providerName} failed:`, message)
+    const qs = new URLSearchParams({
+      error: 'token_exchange_failed',
+      message,
+      provider: providerName,
+    })
+    return c.redirect(redirectToConnections(appUrl, orgSlug, qs))
   }
 })
 
-async function saveMetaSubAccounts(userAccessToken: string, orgId: string, userId: string) {
+/**
+ * Descubre Pages de Facebook (y su Instagram Business asociado si existe)
+ * y las guarda como cuentas publicables. Devuelve cuántas se guardaron.
+ */
+async function saveMetaSubAccounts(
+  userAccessToken: string,
+  orgId: string,
+  userId: string,
+): Promise<{ pages: number; instagram: number }> {
   const pages = await metaProvider.getPages(userAccessToken)
+  console.log(`[oauth] meta: discovered ${pages.length} Page(s) for org ${orgId}`)
+
+  let igCount = 0
 
   for (const page of pages) {
+    if (!page.access_token) {
+      console.warn(`[oauth] meta: Page ${page.id} sin access_token (probablemente falta pages_show_list/manage scope)`)
+      continue
+    }
+
     const pageTokenEncrypted = encryptToken(page.access_token)
-    await supabaseAdmin.from('social_accounts').upsert(
+    const { error: pageErr } = await supabaseAdmin.from('social_accounts').upsert(
       {
         organization_id: orgId,
         provider: 'facebook',
@@ -114,36 +188,51 @@ async function saveMetaSubAccounts(userAccessToken: string, orgId: string, userI
       },
       { onConflict: 'organization_id,provider,external_id' },
     )
+    if (pageErr) {
+      console.error(`[oauth] meta: error guardando Page ${page.id}:`, pageErr)
+      continue
+    }
 
     if (page.instagram_business_account?.id) {
-      const igAccount = await metaProvider.getInstagramAccount(
-        page.access_token,
-        page.instagram_business_account.id,
-      )
-
-      if (igAccount) {
-        await supabaseAdmin.from('social_accounts').upsert(
-          {
-            organization_id: orgId,
-            provider: 'instagram',
-            external_id: igAccount.id,
-            display_name: igAccount.username || igAccount.name,
-            avatar_url: igAccount.profile_picture_url,
-            access_token_encrypted: pageTokenEncrypted,
-            status: 'active',
-            metadata: {
-              type: 'business',
-              username: igAccount.username,
-              followers: igAccount.followers_count,
-              page_id: page.id,
-            },
-            connected_by: userId,
-          },
-          { onConflict: 'organization_id,provider,external_id' },
+      try {
+        const igAccount = await metaProvider.getInstagramAccount(
+          page.access_token,
+          page.instagram_business_account.id,
         )
+
+        if (igAccount) {
+          const { error: igErr } = await supabaseAdmin.from('social_accounts').upsert(
+            {
+              organization_id: orgId,
+              provider: 'instagram',
+              external_id: igAccount.id,
+              display_name: igAccount.username || igAccount.name,
+              avatar_url: igAccount.profile_picture_url,
+              access_token_encrypted: pageTokenEncrypted,
+              status: 'active',
+              metadata: {
+                type: 'business',
+                username: igAccount.username,
+                followers: igAccount.followers_count,
+                page_id: page.id,
+              },
+              connected_by: userId,
+            },
+            { onConflict: 'organization_id,provider,external_id' },
+          )
+          if (igErr) {
+            console.error(`[oauth] meta: error guardando IG ${igAccount.id}:`, igErr)
+          } else {
+            igCount++
+          }
+        }
+      } catch (err) {
+        console.error(`[oauth] meta: error descubriendo IG para Page ${page.id}:`, err)
       }
     }
   }
+
+  return { pages: pages.length, instagram: igCount }
 }
 
 export { callback }
