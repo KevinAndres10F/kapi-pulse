@@ -1,16 +1,23 @@
 /**
  * Registro central de proveedores.
  * Cada red social implementa la interface SocialProvider.
+ *
+ * IMPORTANTE: `meta` y `facebook` apuntan al MetaProvider (Facebook Login
+ * tradicional, descubre Pages + IG Business vinculadas). `instagram` ahora
+ * apunta al InstagramProvider (Login directo con Instagram, sin necesidad
+ * de Facebook Page). Las cuentas guardadas con `metadata.auth_method` =
+ * 'instagram_login' usan el flow nuevo; el resto siguen el flow Meta.
  */
 
 import type { SocialProvider } from './types'
 import { metaProvider } from './meta'
+import { instagramProvider } from './instagram'
 import { linkedInProvider } from './linkedin'
 
 const providers: Record<string, SocialProvider> = {
   meta: metaProvider,
-  facebook: metaProvider,   // alias — Meta maneja FB + IG
-  instagram: metaProvider,  // alias
+  facebook: metaProvider,
+  instagram: instagramProvider,
   linkedin: linkedInProvider,
   // TODO: provider tiktok en Fase 2b
   // TODO: provider x en Fase 2b
@@ -24,10 +31,10 @@ export function getProvider(name: string): SocialProvider | undefined {
 }
 
 export function getSupportedProviders(): string[] {
-  // Retornar solo proveedores únicos (sin aliases)
-  return ['meta', 'linkedin']
+  return ['meta', 'instagram', 'linkedin']
 }
 
 export { metaProvider } from './meta'
+export { instagramProvider } from './instagram'
 export { linkedInProvider } from './linkedin'
 export type { SocialProvider } from './types'

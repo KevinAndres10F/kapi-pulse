@@ -37,8 +37,22 @@ const PROVIDER_CONFIG: Record<string, { label: string; color: string; bgColor: s
   whatsapp: { label: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-100' },
 }
 
-const AVAILABLE_PROVIDERS = [
-  { key: 'meta', label: 'Facebook + Instagram', description: 'Conecta Pages de Facebook e Instagram Business' },
+const AVAILABLE_PROVIDERS: Array<{
+  key: string
+  label: string
+  description: string
+  disabled?: boolean
+}> = [
+  {
+    key: 'meta',
+    label: 'Facebook',
+    description: 'Conecta Pages de Facebook. Si tu Page tiene una cuenta de Instagram Business vinculada, también se importa.',
+  },
+  {
+    key: 'instagram',
+    label: 'Instagram',
+    description: 'Conecta directo con tu cuenta de Instagram Business o Creator, sin necesidad de Facebook Page.',
+  },
   { key: 'linkedin', label: 'LinkedIn', description: 'Publica como perfil personal' },
   // Proveedores futuros
   { key: 'tiktok', label: 'TikTok', description: 'Disponible pronto', disabled: true },
@@ -143,9 +157,20 @@ export default function ConnectionsPage() {
     setLoadingDelete(null)
   }
 
-  async function handleReconnect(provider: string) {
-    // Reconectar = iniciar nuevo flujo OAuth
-    const providerKey = provider === 'facebook' || provider === 'instagram' ? 'meta' : provider
+  async function handleReconnect(account: SocialAccount) {
+    // Reconectar = iniciar nuevo flujo OAuth.
+    // Distinguir: cuentas Instagram conectadas via login directo (metadata.auth_method=instagram_login)
+    // re-inician con /connect/instagram. Las cuentas Facebook (y sus IG vinculadas)
+    // re-inician con /connect/meta.
+    const authMethod = (account.metadata?.auth_method as string | undefined) || ''
+    let providerKey: string
+    if (account.provider === 'instagram' && authMethod === 'instagram_login') {
+      providerKey = 'instagram'
+    } else if (account.provider === 'facebook' || account.provider === 'instagram') {
+      providerKey = 'meta'
+    } else {
+      providerKey = account.provider
+    }
     handleConnect(providerKey)
   }
 
@@ -173,8 +198,10 @@ export default function ConnectionsPage() {
         <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-green-800">
           <p className="font-medium">
             {providerParam === 'meta' || providerParam === 'facebook'
-              ? 'Facebook + Instagram conectados.'
-              : 'Cuenta conectada exitosamente.'}
+              ? 'Facebook conectado.'
+              : providerParam === 'instagram'
+                ? 'Instagram conectado.'
+                : 'Cuenta conectada exitosamente.'}
           </p>
           {(providerParam === 'meta' || providerParam === 'facebook') && pagesParam && (
             <p className="mt-1 text-sm text-green-700">
@@ -251,7 +278,7 @@ export default function ConnectionsPage() {
                 <div className="mt-4 flex gap-2">
                   {account.status !== 'active' && (
                     <button
-                      onClick={() => handleReconnect(account.provider)}
+                      onClick={() => handleReconnect(account)}
                       className="flex items-center gap-1 rounded-lg border border-yellow-300 px-3 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-50"
                     >
                       <RefreshCw className="h-3 w-3" />
