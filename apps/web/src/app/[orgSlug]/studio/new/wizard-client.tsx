@@ -21,6 +21,8 @@ import {
   packageCampaign,
   publishCampaign,
   fetchJob,
+  fetchCapabilities,
+  type StudioCapabilities,
 } from '@/lib/studio/api'
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6
@@ -40,6 +42,13 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const [campaignName, setCampaignName] = useState('Nueva campaña')
   const [brief, setBrief] = useState<Brief | null>(null)
+  const [capabilities, setCapabilities] = useState<StudioCapabilities | null>(null)
+
+  useEffect(() => {
+    fetchCapabilities(orgId)
+      .then(setCapabilities)
+      .catch((err) => console.warn('[wizard] capabilities fetch failed:', err))
+  }, [orgId])
 
   // Step 2 — imágenes
   const [imageJobId, setImageJobId] = useState<string | null>(null)
@@ -421,61 +430,92 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
       {step === 4 && (
         <section className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="mb-2 text-lg font-semibold">4. UGC con avatar IA (opcional)</h2>
-          <p className="mb-4 text-sm text-gray-500">Genera un video vertical de una persona hablando del producto (HeyGen, 120 créditos).</p>
+          <p className="mb-4 text-sm text-gray-500">
+            Genera un video vertical de una persona hablando del producto. Requiere configurar HeyGen
+            o Hedra en el backend (120 créditos).
+          </p>
 
-          <div className="space-y-4">
-            <AvatarSelector
-              orgId={orgId}
-              selectedAvatarId={avatarId}
-              selectedVoiceId={voiceId}
-              onAvatarSelect={setAvatarId}
-              onVoiceSelect={setVoiceId}
-            />
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Script (lo que dice el avatar)</label>
-              <textarea
-                value={script}
-                onChange={(e) => setScript(e.target.value)}
-                rows={4}
-                placeholder={brief ? `Hablale a ${brief.audience || 'tu audiencia'} sobre ${brief.product}` : ''}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              />
+          {capabilities && !capabilities.avatar ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium">Avatar UGC no está habilitado en este entorno</p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    Tu instalación no tiene <code className="rounded bg-amber-100 px-1">HEYGEN_API_KEY</code> ni{' '}
+                    <code className="rounded bg-amber-100 px-1">HEDRA_API_KEY</code> configurada. Podés
+                    saltar este paso y seguir con el copy + publicación. Configurá una de esas claves cuando
+                    quieras incorporar avatares al flujo.
+                  </p>
+                </div>
+              </div>
             </div>
-
-            <button
-              onClick={handleGenerateAvatar}
-              disabled={avatarJob.state === 'queued' || avatarJob.state === 'running'}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {(avatarJob.state === 'queued' || avatarJob.state === 'running') && <Loader2 className="h-4 w-4 animate-spin" />}
-              Generar avatar (120 créditos)
-            </button>
-
-            {avatarJobId && (
-              <VideoPreview
-                asset={avatarJob.assets[0]}
-                state={avatarJob.state}
-                error={avatarJob.error}
-                label={avatarJob.state === 'succeeded' ? 'Avatar listo' : `Estado: ${avatarJob.state}`}
+          ) : (
+            <div className="space-y-4">
+              <AvatarSelector
+                orgId={orgId}
+                selectedAvatarId={avatarId}
+                selectedVoiceId={voiceId}
+                onAvatarSelect={setAvatarId}
+                onVoiceSelect={setVoiceId}
               />
-            )}
-          </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Script (lo que dice el avatar)</label>
+                <textarea
+                  value={script}
+                  onChange={(e) => setScript(e.target.value)}
+                  rows={4}
+                  placeholder={brief ? `Hablale a ${brief.audience || 'tu audiencia'} sobre ${brief.product}` : ''}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <button
+                onClick={handleGenerateAvatar}
+                disabled={avatarJob.state === 'queued' || avatarJob.state === 'running'}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {(avatarJob.state === 'queued' || avatarJob.state === 'running') && <Loader2 className="h-4 w-4 animate-spin" />}
+                Generar avatar (120 créditos)
+              </button>
+
+              {avatarJobId && (
+                <VideoPreview
+                  asset={avatarJob.assets[0]}
+                  state={avatarJob.state}
+                  error={avatarJob.error}
+                  label={avatarJob.state === 'succeeded' ? 'Avatar listo' : `Estado: ${avatarJob.state}`}
+                />
+              )}
+            </div>
+          )}
 
           <div className="mt-6 flex items-center justify-between">
             <button onClick={() => setStep(3)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
             <div className="flex gap-2">
-              <button onClick={skipAvatar} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">
-                Saltar
-              </button>
-              <button
-                onClick={continueAfterAvatar}
-                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                Continuar <ChevronRight className="h-4 w-4" />
-              </button>
+              {capabilities?.avatar === false ? (
+                <button
+                  onClick={skipAvatar}
+                  className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Saltar y continuar <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <>
+                  <button onClick={skipAvatar} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">
+                    Saltar
+                  </button>
+                  <button
+                    onClick={continueAfterAvatar}
+                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  >
+                    Continuar <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </section>

@@ -283,13 +283,34 @@ export async function requestUploadUrl(orgId: string, ext: string, kind?: string
   return jsonOrThrow<{ assetId: string; uploadUrl: string; token: string; storagePath: string; bucket: string }>(res)
 }
 
+// ============== Capabilities ==============
+export interface StudioCapabilities {
+  image: boolean
+  video: boolean
+  avatar: boolean
+  copy: boolean
+  avatarProvider: 'heygen' | 'hedra' | null
+}
+
+export async function fetchCapabilities(orgId: string, accessToken?: string): Promise<StudioCapabilities> {
+  const res = await fetch(
+    `${API_URL}/api/studio/generate/capabilities?org_id=${encodeURIComponent(orgId)}`,
+    { headers: authHeaders(accessToken), credentials: 'include' },
+  )
+  return jsonOrThrow<StudioCapabilities>(res)
+}
+
 // ============== Avatars ==============
 export async function listAvatars(orgId: string, accessToken?: string) {
   const res = await fetch(`${API_URL}/api/studio/generate/avatars?org_id=${encodeURIComponent(orgId)}`, {
     headers: authHeaders(accessToken),
     credentials: 'include',
   })
-  return jsonOrThrow<{ avatars: Array<{ id: string; name: string; previewUrl: string; gender?: string }> }>(res)
+  return jsonOrThrow<{
+    avatars: Array<{ id: string; name: string; previewUrl: string; gender?: string }>
+    available: boolean
+    reason?: string
+  }>(res)
 }
 
 export async function listVoices(orgId: string, language?: string, accessToken?: string) {
@@ -299,7 +320,11 @@ export async function listVoices(orgId: string, language?: string, accessToken?:
     headers: authHeaders(accessToken),
     credentials: 'include',
   })
-  return jsonOrThrow<{ voices: Array<{ id: string; name: string; language: string; previewUrl?: string; gender?: string }> }>(res)
+  return jsonOrThrow<{
+    voices: Array<{ id: string; name: string; language: string; previewUrl?: string; gender?: string }>
+    available: boolean
+    reason?: string
+  }>(res)
 }
 
 // ============== Social accounts (for publish target picker) ==============

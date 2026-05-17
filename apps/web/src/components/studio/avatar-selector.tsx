@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Check } from 'lucide-react'
+import { Loader2, Check, AlertCircle } from 'lucide-react'
 import { listAvatars, listVoices } from '@/lib/studio/api'
 
 interface Avatar {
@@ -25,16 +25,19 @@ export function AvatarSelector({
   selectedVoiceId,
   onAvatarSelect,
   onVoiceSelect,
+  onUnavailable,
 }: {
   orgId: string
   selectedAvatarId: string | null
   selectedVoiceId: string | null
   onAvatarSelect: (id: string) => void
   onVoiceSelect: (id: string) => void
+  onUnavailable?: (reason: string) => void
 }) {
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [voices, setVoices] = useState<Voice[]>([])
   const [loading, setLoading] = useState(true)
+  const [unavailableReason, setUnavailableReason] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -43,6 +46,12 @@ export function AvatarSelector({
     Promise.all([listAvatars(orgId), listVoices(orgId, 'spanish')])
       .then(([a, v]) => {
         if (!mounted) return
+        if (a.available === false) {
+          const reason = a.reason || 'Provider de avatares no configurado'
+          setUnavailableReason(reason)
+          onUnavailable?.(reason)
+          return
+        }
         setAvatars(a.avatars)
         setVoices(v.voices)
       })
@@ -54,12 +63,28 @@ export function AvatarSelector({
     return () => {
       mounted = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId])
 
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Cargando avatares HeyGen...
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando avatares...
+      </div>
+    )
+  }
+
+  if (unavailableReason) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <p className="font-medium">Generación de avatar no disponible</p>
+          <p className="text-xs text-amber-700">
+            Para habilitar avatares UGC, configurá <code className="rounded bg-amber-100 px-1">HEYGEN_API_KEY</code> o{' '}
+            <code className="rounded bg-amber-100 px-1">HEDRA_API_KEY</code> en el backend. Saltá este paso por ahora.
+          </p>
+        </div>
       </div>
     )
   }
