@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { refreshExpiringTokens } from './jobs/refresh-tokens.js'
 import { publishPost } from './jobs/publish-post.js'
 import { syncAllMetrics } from './jobs/metrics-sync.js'
+import { syncAllAdsInsights } from './jobs/ads-insights-sync.js'
 import { generateImageJob } from './jobs/generation/generate-image.js'
 import { generateVideoJob } from './jobs/generation/generate-video.js'
 import { generateAvatarJob } from './jobs/generation/generate-avatar.js'
@@ -123,6 +124,8 @@ if (!redisUrl) {
           return await refreshExpiringTokens()
         case 'metrics-sync':
           return await syncAllMetrics()
+        case 'ads-insights-sync':
+          return await syncAllAdsInsights()
         default:
           console.warn(`[worker] Job de mantenimiento desconocido: ${job.name}`)
       }
@@ -142,6 +145,12 @@ if (!redisUrl) {
     { name: 'metrics-sync' },
   )
 
+  await maintenanceQueue.upsertJobScheduler(
+    'ads-insights-sync-6h',
+    { every: 6 * 60 * 60 * 1000 },
+    { name: 'ads-insights-sync' },
+  )
+
   maintenanceWorker.on('completed', (job) => {
     console.log(`[maintenance] Job ${job.id} completado`)
   })
@@ -153,7 +162,7 @@ if (!redisUrl) {
   console.log('Worker iniciado (conectado a Redis)')
   console.log('  - Cola "publish": concurrency=5, retry=3 con backoff exponencial')
   console.log('  - Cola "generation": concurrency=10, retry=2 con refund automático')
-  console.log('  - Cola "maintenance": refresh tokens 1h, metrics-sync 6h')
+  console.log('  - Cola "maintenance": refresh tokens 1h, metrics-sync 6h, ads-insights-sync 6h')
 }
 
 export {}

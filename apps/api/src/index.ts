@@ -12,6 +12,7 @@ import { credits } from './routes/credits'
 import { assets } from './routes/assets'
 import { campaigns as studioCampaigns } from './routes/studio/campaigns'
 import { studioGenerate } from './routes/studio/generate'
+import { ads, adsAdmin } from './routes/ads'
 import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
@@ -84,6 +85,10 @@ app.route('/api/credits', credits)
 app.route('/api/assets', assets)
 app.route('/api/studio/campaigns', studioCampaigns)
 app.route('/api/studio/generate', studioGenerate)
+
+// Meta Ads (modelo agencia central — System User token)
+app.route('/api/ads', ads)
+app.route('/api/admin/ads', adsAdmin)
 
 // API de cuentas sociales
 app.get('/api/social-accounts', async (c) => {
