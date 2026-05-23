@@ -33,6 +33,9 @@ import {
   getInsights,
   getAdAccount,
   listBusinessAdAccounts,
+  listBusinessPages,
+  checkAdAccountFunding,
+  deleteCampaign,
   MetaAdsError,
   type AdObjective,
 } from '../providers/meta-ads'
@@ -182,8 +185,11 @@ ads.post('/accounts', async (c) => {
 
   // Verifica acceso en Meta antes de persistir
   let meta
+  let funding
   try {
     meta = await getAdAccount(metaAdAccountId)
+    // Verifica funding en paralelo (no bloquea si falla)
+    funding = await checkAdAccountFunding(metaAdAccountId).catch(() => null)
   } catch (e) {
     const h = handleMetaError(e)
     return c.json({ error: h.error, details: h.details }, h.status)
@@ -203,7 +209,62 @@ ads.post('/accounts', async (c) => {
     .single()
 
   if (error) return c.json({ error: error.message }, 500)
-  return c.json({ account: data }, 201)
+
+  // Warnings no bloqueantes — el cliente puede registrar la cuenta pero
+  // saber que tiene que arreglar antes de aprobar campañas.
+  const warnings: string[] = []
+  if (funding && !funding.hasFunding) {
+    if (funding.accountStatus !== 1) {
+      warnings.push(`account_status_${funding.accountStatus}`)
+    }
+    if (!funding.fundingSource) {
+      warnings.push('no_payment_method')
+    }
+  }
+
+  return c.json({ account: data, warnings }, 201)
+})
+
+/**
+ * GET /api/ads/pages — lista Pages del Business (owned + client).
+ * Admin-only — la UI lo usa para el dropdown al crear creatives.
+ */
+ads.get('/pages', async (c) => {
+  const userId = getCallerUserId(c)
+  if (!userId) return c.json({ error: 'Falta X-User-Id' }, 401)
+  if (!(await isAdminOperator(userId))) return c.json({ error: 'Solo admin operador' }, 403)
+
+  try {
+    const { data } = await listBusinessPages()
+    return c.json({ pages: data })
+  } catch (e) {
+    const h = handleMetaError(e)
+    return c.json({ error: h.error, details: h.details }, h.status)
+  }
+})
+
+/**
+ * GET /api/ads/accounts/:id/funding — verifica funding status en vivo.
+ * Útil para que el cliente sepa si puede enviar a aprobación.
+ */
+ads.get('/accounts/:id/funding', async (c) => {
+  const id = c.req.param('id')
+  const { data: account, error } = await supabaseAdmin
+    .from('ad_accounts')
+    .select('meta_ad_account_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) return c.json({ error: error.message }, 500)
+  if (!account) return c.json({ error: 'Ad account no encontrada' }, 404)
+
+  try {
+    const status = await checkAdAccountFunding(account.meta_ad_account_id)
+    return c.json(status)
+  } catch (e) {
+    const h = handleMetaError(e)
+    return c.json({ error: h.error, details: h.details }, h.status)
+  }
 })
 
 /**
@@ -349,6 +410,58 @@ ads.post('/campaigns/draft', async (c) => {
   if (crErr) return c.json({ error: crErr.message }, 500)
 
   return c.json({ campaign, adSet, creative }, 201)
+})
+
+/**
+ * DELETE /api/ads/campaigns/:id — elimina la campaña.
+ * - Si tiene meta_campaign_id, intenta borrar en Meta primero.
+ * - Luego elimina local (cascade a ad_sets, ad_creatives, ads vía FK).
+ *
+ * Reglas:
+ * - Drafts: cualquier miembro de la org puede borrar.
+ * - Cualquier otro estado: solo admin operador (porque ya existe en Meta).
+ */
+ads.delete('/campaigns/:id', async (c) => {
+  const userId = getCallerUserId(c)
+  if (!userId) return c.json({ error: 'Falta X-User-Id' }, 401)
+  const id = c.req.param('id')
+
+  const { data: campaign, error: gErr } = await supabaseAdmin
+    .from('ad_campaigns')
+    .select('id, organization_id, status, meta_campaign_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (gErr) return c.json({ error: gErr.message }, 500)
+  if (!campaign) return c.json({ error: 'Campaña no encontrada' }, 404)
+
+  if (campaign.status !== 'draft') {
+    if (!(await isAdminOperator(userId))) {
+      return c.json({ error: 'Solo admin operador puede borrar campañas no-draft' }, 403)
+    }
+  } else {
+    if (!(await isMemberOfOrg(userId, campaign.organization_id))) {
+      return c.json({ error: 'No autorizado' }, 403)
+    }
+  }
+
+  // Si existe en Meta, borrar primero allá
+  if (campaign.meta_campaign_id) {
+    try {
+      await deleteCampaign(campaign.meta_campaign_id)
+    } catch (e) {
+      // Loggeamos pero seguimos — la campaña puede haber sido borrada en Meta manualmente
+      console.warn(`[ads] No se pudo borrar en Meta ${campaign.meta_campaign_id}:`, e)
+    }
+  }
+
+  const { error: dErr } = await supabaseAdmin
+    .from('ad_campaigns')
+    .delete()
+    .eq('id', id)
+
+  if (dErr) return c.json({ error: dErr.message }, 500)
+  return c.json({ success: true })
 })
 
 /**

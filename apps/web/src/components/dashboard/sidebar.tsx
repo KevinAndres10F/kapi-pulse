@@ -19,6 +19,7 @@ import {
   Sparkles,
   Folder,
   Coins,
+  Megaphone,
   X,
 } from 'lucide-react'
 
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { href: 'analytics', label: 'Analíticas', icon: BarChart3 },
   { href: 'ai', label: 'IA Editorial', icon: Bot },
   { href: 'studio', label: 'Studio', icon: Sparkles },
+  { href: 'ads', label: 'Anuncios', icon: Megaphone },
   { href: 'library', label: 'Librería', icon: Folder },
   { href: 'credits', label: 'Créditos', icon: Coins },
   { href: 'alerts', label: 'Alertas', icon: Bell },
