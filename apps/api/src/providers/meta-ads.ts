@@ -348,3 +348,67 @@ export async function listBusinessAdAccounts(): Promise<{
     `/${businessId}/owned_ad_accounts?fields=id,name,currency&limit=500`,
   )
 }
+
+/**
+ * Lista las Pages del Business Portfolio (owned + client).
+ * - owned: Pages que tu Business posee.
+ * - client: Pages de clientes que te dieron acceso vía Request.
+ * Devuelve ambas con una bandera `kind` para que la UI las distinga.
+ */
+export async function listBusinessPages(): Promise<{
+  data: Array<{ id: string; name?: string; kind: 'owned' | 'client' }>
+}> {
+  const businessId = process.env.META_BUSINESS_ID
+  if (!businessId) throw new Error('META_BUSINESS_ID no configurado')
+
+  const [owned, client] = await Promise.all([
+    graphRequest<{ data?: Array<{ id: string; name?: string }> }>(
+      `/${businessId}/owned_pages?fields=id,name&limit=500`,
+    ).catch(() => ({ data: [] })),
+    graphRequest<{ data?: Array<{ id: string; name?: string }> }>(
+      `/${businessId}/client_pages?fields=id,name&limit=500`,
+    ).catch(() => ({ data: [] })),
+  ])
+
+  const merged: Array<{ id: string; name?: string; kind: 'owned' | 'client' }> = []
+  for (const p of owned.data || []) merged.push({ ...p, kind: 'owned' })
+  for (const p of client.data || []) merged.push({ ...p, kind: 'client' })
+  return { data: merged }
+}
+
+/**
+ * Verifica si una Ad Account tiene método de pago activo. Devuelve un objeto
+ * con `hasFunding` y, opcionalmente, una razón si no lo tiene.
+ *
+ * Meta no expone un único campo simple para esto; consultamos varios:
+ * - funding_source: ID del método primario (si existe).
+ * - account_status: 1=ACTIVE; cualquier otro valor indica problema.
+ * - disable_reason: razón si la cuenta está deshabilitada.
+ */
+export async function checkAdAccountFunding(adAccountId: string): Promise<{
+  hasFunding: boolean
+  accountStatus?: number
+  disableReason?: number
+  fundingSource?: string
+}> {
+  const data = await graphRequest<{
+    funding_source?: string
+    account_status?: number
+    disable_reason?: number
+  }>(`/${adAccountId}?fields=funding_source,account_status,disable_reason`)
+  return {
+    hasFunding: !!data.funding_source && data.account_status === 1,
+    accountStatus: data.account_status,
+    disableReason: data.disable_reason,
+    fundingSource: data.funding_source,
+  }
+}
+
+/**
+ * Elimina una campaña en Meta (DELETE permanente).
+ * Si la campaña tiene adsets/ads activos, Meta los elimina en cascada.
+ */
+export async function deleteCampaign(metaCampaignId: string): Promise<{ success: boolean }> {
+  await graphRequest(`/${metaCampaignId}`, { method: 'DELETE' })
+  return { success: true }
+}
