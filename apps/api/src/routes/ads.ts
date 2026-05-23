@@ -24,6 +24,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { supabaseAdmin } from '../lib/supabase'
+import { notifyAdmin, escapeHtml } from '../lib/telegram'
 import {
   createCampaign,
   createAdSet,
@@ -485,10 +486,26 @@ ads.post('/campaigns/:id/submit', async (c) => {
     .from('ad_campaigns')
     .update({ status: 'pending_approval' })
     .eq('id', id)
-    .select()
+    .select(`*, ad_accounts (meta_ad_account_id, currency)`)
     .single()
 
   if (error) return c.json({ error: error.message }, 500)
+
+  // Notify admin via Telegram (best effort)
+  const budget = data.daily_budget_cents
+    ? `$${(data.daily_budget_cents / 100).toFixed(2)}/día`
+    : data.lifetime_budget_cents
+      ? `$${(data.lifetime_budget_cents / 100).toFixed(2)} total`
+      : 'sin presupuesto'
+  notifyAdmin(
+    `🟡 <b>Nueva campaña pendiente de aprobación</b>\n\n` +
+      `<b>${escapeHtml(data.name)}</b>\n` +
+      `Objetivo: ${escapeHtml(data.objective)}\n` +
+      `Presupuesto: ${escapeHtml(budget)}\n` +
+      `Cuenta: ${escapeHtml(data.ad_accounts?.meta_ad_account_id || '?')}\n\n` +
+      `Revisa en el panel admin de KAPI Pulse.`,
+  ).catch(() => {})
+
   return c.json({ campaign: data })
 })
 
@@ -620,6 +637,12 @@ adsAdmin.post('/campaigns/:id/approve', async (c) => {
       status: 'PAUSED',
     })
 
+    notifyAdmin(
+      `✅ <b>Campaña aprobada (PAUSED en Meta)</b>\n\n` +
+        `<b>${escapeHtml(full.name)}</b>\n` +
+        `Meta Campaign ID: <code>${escapeHtml(metaCampaign.id)}</code>`,
+    ).catch(() => {})
+
     return c.json({
       success: true,
       meta: {
@@ -671,8 +694,6 @@ adsAdmin.post('/campaigns/:id/launch', async (c) => {
 
   try {
     await updateCampaignStatus(campaign.meta_campaign_id, 'ACTIVE')
-    // Activar también adsets. Si fallan no rollbackeamos la campaign
-    // — el operador puede activarlos manualmente desde el panel.
     const adSets = (campaign.ad_sets || []) as Array<{ meta_adset_id: string | null }>
     for (const s of adSets) {
       if (s.meta_adset_id) {
@@ -683,10 +704,18 @@ adsAdmin.post('/campaigns/:id/launch', async (c) => {
         }
       }
     }
-    await supabaseAdmin
+    const { data: updated } = await supabaseAdmin
       .from('ad_campaigns')
       .update({ status: 'active', launched_at: new Date().toISOString() })
       .eq('id', id)
+      .select('name')
+      .single()
+
+    notifyAdmin(
+      `🚀 <b>Campaña LANZADA en Meta (ACTIVE)</b>\n\n` +
+        `<b>${escapeHtml(updated?.name || '?')}</b>\n` +
+        `Empezó a gastar el presupuesto diario.`,
+    ).catch(() => {})
 
     return c.json({ success: true })
   } catch (e) {
