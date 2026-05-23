@@ -13,11 +13,16 @@ import {
   ShieldAlert,
   BarChart3,
   ExternalLink,
+  Link2,
+  X,
+  Loader2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   listCampaigns,
   listAdAccounts,
+  listBusinessAdAccounts,
+  registerAdAccount,
   deleteCampaign,
   submitForApproval,
   type AdCampaign,
@@ -37,6 +42,7 @@ export default function AdsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showConnectModal, setShowConnectModal] = useState(false)
 
   // Resolver orgId + userId desde la sesión
   useEffect(() => {
@@ -147,13 +153,22 @@ export default function AdsPage() {
             Insights
           </Link>
           {isAdmin && (
-            <Link
-              href={`/${params.orgSlug}/ads/admin`}
-              className="flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
-            >
-              <ShieldAlert className="h-4 w-4" />
-              Panel admin
-            </Link>
+            <>
+              <button
+                onClick={() => setShowConnectModal(true)}
+                className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Link2 className="h-4 w-4" />
+                Conectar cuenta
+              </button>
+              <Link
+                href={`/${params.orgSlug}/ads/admin`}
+                className="flex items-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+              >
+                <ShieldAlert className="h-4 w-4" />
+                Panel admin
+              </Link>
+            </>
           )}
           <Link
             href={`/${params.orgSlug}/ads/new`}
@@ -205,6 +220,18 @@ export default function AdsPage() {
         </div>
       )}
 
+      {/* Modal de conectar cuenta (solo admin) */}
+      {showConnectModal && userId && (
+        <ConnectAccountModal
+          userId={userId}
+          onClose={() => setShowConnectModal(false)}
+          onSuccess={() => {
+            setShowConnectModal(false)
+            load()
+          }}
+        />
+      )}
+
       {/* Listado de campañas */}
       <div className="rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-6 py-4">
@@ -242,9 +269,9 @@ export default function AdsPage() {
                   : '—'
 
               return (
-                <li key={c.id} className="px-6 py-4">
+                <li key={c.id} className="px-6 py-4 hover:bg-gray-50">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
+                    <Link href={`/${params.orgSlug}/ads/${c.id}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate font-medium text-gray-900">{c.name}</p>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.color}`}>
@@ -272,7 +299,7 @@ export default function AdsPage() {
                           Razón de rechazo: {c.rejection_reason}
                         </p>
                       )}
-                    </div>
+                    </Link>
                     <div className="flex flex-shrink-0 items-center gap-2">
                       {c.status === 'draft' && (
                         <>
@@ -307,6 +334,227 @@ export default function AdsPage() {
               )
             })}
           </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface OrgOption {
+  id: string
+  name: string
+  slug: string
+}
+
+function ConnectAccountModal({
+  userId,
+  onClose,
+  onSuccess,
+}: {
+  userId: string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const supabase = createClient()
+  const [orgs, setOrgs] = useState<OrgOption[]>([])
+  const [businessAccounts, setBusinessAccounts] = useState<
+    Array<{ id: string; name?: string; currency?: string }>
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [selectedOrgId, setSelectedOrgId] = useState('')
+  const [selectedMetaId, setSelectedMetaId] = useState('')
+  const [manualMetaId, setManualMetaId] = useState('')
+  const [useManual, setUseManual] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [{ data: orgsData }, biz] = await Promise.all([
+          supabase.from('organizations').select('id, name, slug').order('name'),
+          listBusinessAdAccounts(userId).catch(() => ({ accounts: [] })),
+        ])
+        if (cancelled) return
+        setOrgs((orgsData || []) as OrgOption[])
+        setBusinessAccounts(biz.accounts)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, userId])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setWarnings([])
+    const metaId = useManual ? manualMetaId.trim() : selectedMetaId
+    if (!selectedOrgId || !metaId) {
+      setError('Elige organización y cuenta')
+      return
+    }
+    if (!/^act_\d+$/.test(metaId)) {
+      setError('El Meta Ad Account ID debe tener formato act_XXXXX')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const r = await registerAdAccount(
+        { organizationId: selectedOrgId, metaAdAccountId: metaId },
+        userId,
+      )
+      if (r.warnings && r.warnings.length > 0) {
+        setWarnings(r.warnings)
+        // Esperar 2s antes de cerrar para que vea los warnings
+        setTimeout(onSuccess, 2000)
+      } else {
+        onSuccess()
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <h2 className="font-semibold text-gray-900">Conectar cuenta publicitaria</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center gap-2 px-6 py-10 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Cargando cuentas de tu Business...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+            <p className="text-sm text-gray-600">
+              Asigna una Ad Account de tu Business Portfolio a una organización cliente.
+              Después esa org puede crear borradores contra esa cuenta.
+            </p>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Organización <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                required
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">— Elige org —</option>
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} ({o.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Cuenta publicitaria de Meta <span className="text-red-500">*</span>
+              </label>
+              {businessAccounts.length > 0 && !useManual ? (
+                <>
+                  <select
+                    value={selectedMetaId}
+                    onChange={(e) => setSelectedMetaId(e.target.value)}
+                    required
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">— Elige cuenta —</option>
+                    {businessAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name || a.id} ({a.currency || 'USD'})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setUseManual(true)}
+                    className="mt-1 text-xs text-blue-600 hover:underline"
+                  >
+                    Pegar ID manualmente
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={manualMetaId}
+                    onChange={(e) => setManualMetaId(e.target.value)}
+                    placeholder="act_1234567890"
+                    pattern="act_\d+"
+                    required
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                  />
+                  {businessAccounts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setUseManual(false)}
+                      className="mt-1 text-xs text-blue-600 hover:underline"
+                    >
+                      Elegir de la lista
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+
+            {error && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {warnings.length > 0 && (
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                <p className="font-medium">⚠️ Cuenta registrada con advertencias:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {warnings.map((w) => (
+                    <li key={w}>
+                      {w === 'no_payment_method'
+                        ? 'No tiene método de pago configurado'
+                        : w.startsWith('account_status_')
+                          ? `Status ${w.replace('account_status_', '')} en Meta`
+                          : w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Conectar
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>
