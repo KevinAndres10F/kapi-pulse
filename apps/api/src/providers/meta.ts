@@ -27,6 +27,7 @@ import type {
   InsightsData,
   PostInsightsData,
 } from './types'
+import { dbg, mask, toArray } from '../lib/oauth-debug'
 
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`
@@ -127,6 +128,14 @@ export class MetaProvider implements SocialProvider {
       console.warn('[meta] could not fetch granted permissions:', err)
     }
 
+    dbg('token exchange ok', {
+      token_type: 'bearer',
+      expires_in: finalExpiresIn,
+      access_token_masked: mask(finalAccessToken),
+      granted_scopes: grantedScopes,
+      scope_count: grantedScopes.length,
+    })
+
     return {
       accessToken: finalAccessToken,
       expiresAt: new Date(Date.now() + finalExpiresIn * 1000),
@@ -176,16 +185,58 @@ export class MetaProvider implements SocialProvider {
   /**
    * Obtiene las Pages de Facebook del usuario
    */
-  async getPages(accessToken: string): Promise<MetaPage[]> {
-    const res = await fetch(
-      `${GRAPH_BASE}/me/accounts?fields=id,name,access_token,picture.type(large),instagram_business_account&access_token=${accessToken}`,
-    )
+  /**
+   * GET /me — usado en debug para confirmar que el access_token funciona
+   * y conocer qué usuario representa. Devuelve null si la llamada falla.
+   */
+  async getMe(accessToken: string): Promise<{ id: string; name?: string } | null> {
+    const res = await fetch(`${GRAPH_BASE}/me?fields=id,name&access_token=${accessToken}`)
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as GraphError
+      dbg('me failed', { status: res.status, error: err.error?.message })
+      return null
+    }
+    const data = (await res.json()) as { id: string; name?: string }
+    dbg('me ok', { id: data.id, name: data.name })
+    return data
+  }
+
+  async getPages(accessToken: string): Promise<MetaPage[]> {
+    // tasks: lista de capacidades que el user tiene sobre cada Page (CREATE_CONTENT,
+    // MANAGE, MODERATE, etc.). Solo se pueblan si pages_show_list está concedido.
+    const fields = 'id,name,access_token,tasks,picture.type(large),instagram_business_account'
+    const res = await fetch(
+      `${GRAPH_BASE}/me/accounts?fields=${fields}&access_token=${accessToken}`,
+    )
+    const bodyText = await res.text()
+    if (!res.ok) {
+      const err = JSON.parse(bodyText || '{}') as GraphError
+      dbg('/me/accounts failed', {
+        status: res.status,
+        error: err.error?.message,
+        code: err.error?.code,
+      })
       throw new Error(`No se pudieron obtener las Pages: ${err.error?.message || res.statusText}`)
     }
-    const data = (await res.json()) as { data?: MetaPage[] }
-    return data.data || []
+    const data = JSON.parse(bodyText) as { data?: MetaPage[]; paging?: unknown }
+    const pages = data.data || []
+
+    dbg('/me/accounts raw', {
+      status: res.status,
+      count: pages.length,
+      has_paging: !!data.paging,
+    })
+    for (const p of pages) {
+      dbg('raw page', {
+        id: p.id,
+        name: p.name,
+        tasks: toArray(p.tasks),
+        has_page_token: Boolean(p.access_token),
+        has_ig: Boolean(p.instagram_business_account?.id),
+      })
+    }
+
+    return pages
   }
 
   /**
@@ -348,6 +399,7 @@ export type MetaPage = {
   id: string
   name: string
   access_token: string
+  tasks?: string[]
   picture?: { data?: { url?: string } }
   instagram_business_account?: { id: string }
 }
