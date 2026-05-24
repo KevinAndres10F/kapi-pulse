@@ -1,6 +1,31 @@
 import type { Context, MiddlewareHandler } from 'hono'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../lib/supabase'
+
+// Cliente para validar JWTs entrantes. `auth.getUser(token)` solo hace una
+// llamada al endpoint /auth/v1/user con el access token del usuario; la API
+// key del cliente sirve únicamente como `apikey` de proyecto. Tanto la anon
+// como la service-role key son válidas para esto — usamos anon cuando está
+// disponible (es la opción documentada) y caemos a service-role si la env
+// no la trae, en vez de lanzar "supabaseKey is required" al instanciar.
+let authClient: SupabaseClient | null = null
+function getAuthClient(): SupabaseClient {
+  if (authClient) return authClient
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) {
+    throw new Error(
+      'Auth client misconfigured: SUPABASE_URL and SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY) must be set',
+    )
+  }
+  if (!process.env.SUPABASE_ANON_KEY) {
+    console.warn('[auth] SUPABASE_ANON_KEY no definida; usando SUPABASE_SERVICE_ROLE_KEY como fallback para validar JWTs')
+  }
+  authClient = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  return authClient
+}
 
 export type OrgRole = 'viewer' | 'editor' | 'admin' | 'owner'
 
@@ -49,12 +74,7 @@ async function resolveUserFromRequest(c: Context): Promise<string | null> {
 
   if (!token) return null
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  )
-
+  const supabase = getAuthClient()
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data?.user) return null
   return data.user.id
