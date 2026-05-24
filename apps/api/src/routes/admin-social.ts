@@ -115,7 +115,7 @@ adminSocial.post('/assign-page', async (c) => {
 
   const warnings: string[] = []
   const tasks = page.tasks || []
-  if (!tasks.includes('CREATE_CONTENT') && !tasks.includes('MANAGE')) {
+  if (tasks.length > 0 && !tasks.includes('CREATE_CONTENT') && !tasks.includes('MANAGE')) {
     warnings.push('system_user_cannot_publish')
   }
 

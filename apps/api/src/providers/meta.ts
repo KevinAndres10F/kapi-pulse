@@ -519,7 +519,7 @@ export async function getPageWithSystemToken(pageId: string): Promise<{
   instagram_business_account?: { id: string }
 }> {
   const token = getSystemUserToken()
-  const fields = 'id,name,access_token,tasks,picture.type(large),instagram_business_account'
+  const fields = 'id,name,access_token,picture.type(large),instagram_business_account'
   const res = await fetch(`${GRAPH_BASE}/${pageId}?fields=${fields}&access_token=${token}`)
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as GraphError
