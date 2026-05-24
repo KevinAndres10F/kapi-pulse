@@ -103,6 +103,8 @@ export default function ConnectionsPage() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showAssignPageModal, setShowAssignPageModal] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loadingDelete, setLoadingDelete] = useState<string | null>(null)
   const supabase = createClient()
 
@@ -138,6 +140,19 @@ export default function ConnectionsPage() {
       .order('connected_at', { ascending: false })
 
     if (data) setAccounts(data)
+
+    // Detectar admin operador (miembro owner/admin de org "kapi") — mismo
+    // patrón que usa /ads. Permite ver la sección "Asignar Page (admin)".
+    const { data: memberships } = await supabase
+      .from('organization_members')
+      .select('role, organizations(slug)')
+      .eq('user_id', user.id)
+      .in('role', ['owner', 'admin'])
+    const ms = (memberships || []) as Array<{
+      role: string
+      organizations: { slug: string } | null
+    }>
+    setIsAdmin(ms.some((m) => m.organizations?.slug === 'kapi'))
   }, [supabase, orgSlug])
 
   useEffect(() => { loadAccounts() }, [loadAccounts])
@@ -184,14 +199,38 @@ export default function ConnectionsPage() {
           </h1>
           <p className="mt-1 text-gray-600">Gestiona tus cuentas de redes sociales conectadas.</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 sm:justify-start"
-        >
-          <Plus className="h-4 w-4" />
-          Conectar red social
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => setShowAssignPageModal(true)}
+              className="flex items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2.5 font-medium text-purple-700 hover:bg-purple-100"
+              title="Asigna Pages del Business directamente, sin pasar por OAuth de usuario"
+            >
+              <Plus className="h-4 w-4" />
+              Asignar Page (admin)
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            Conectar red social
+          </button>
+        </div>
       </div>
+
+      {showAssignPageModal && userId && orgId && (
+        <AssignPageModal
+          userId={userId}
+          defaultOrgId={orgId}
+          onClose={() => setShowAssignPageModal(false)}
+          onSuccess={() => {
+            setShowAssignPageModal(false)
+            loadAccounts()
+          }}
+        />
+      )}
 
       {/* Mensajes de estado */}
       {successParam && (
@@ -348,6 +387,250 @@ export default function ConnectionsPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ============== Modal: Asignar Page (admin) ==============
+
+interface OrgOption {
+  id: string
+  name: string
+  slug: string
+}
+
+interface AvailablePageRow {
+  id: string
+  name: string | null
+  kind: 'owned' | 'client'
+  canPublish: boolean
+  hasInstagram: boolean
+  tasks: string[]
+}
+
+function AssignPageModal({
+  userId,
+  defaultOrgId,
+  onClose,
+  onSuccess,
+}: {
+  userId: string
+  defaultOrgId: string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const supabase = createClient()
+  const [orgs, setOrgs] = useState<OrgOption[]>([])
+  const [pages, setPages] = useState<AvailablePageRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [selectedOrgId, setSelectedOrgId] = useState(defaultOrgId)
+  const [selectedPageId, setSelectedPageId] = useState('')
+  const [includeIg, setIncludeIg] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
+  const [success, setSuccess] = useState<{ fb: string; ig: string | null } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Import dinámico para no engrosar bundle si nunca se abre el modal
+        const { listAvailablePages } = await import('@/lib/admin-social/api')
+        const [orgsData, pagesData] = await Promise.all([
+          supabase.from('organizations').select('id, name, slug').order('name'),
+          listAvailablePages(userId).catch((e: Error) => {
+            setLoadError(`No se pudieron cargar Pages del Business: ${e.message}`)
+            return { pages: [] }
+          }),
+        ])
+        if (cancelled) return
+        setOrgs((orgsData.data || []) as OrgOption[])
+        setPages(pagesData.pages)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, userId])
+
+  const selectedPage = pages.find((p) => p.id === selectedPageId)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedOrgId || !selectedPageId) {
+      setSubmitError('Elige organización y Page')
+      return
+    }
+    setSubmitting(true)
+    setSubmitError(null)
+    setWarnings([])
+    setSuccess(null)
+    try {
+      const { assignPage } = await import('@/lib/admin-social/api')
+      const r = await assignPage(
+        {
+          organizationId: selectedOrgId,
+          pageId: selectedPageId,
+          includeLinkedInstagram: includeIg,
+        },
+        userId,
+      )
+      setWarnings(r.warnings || [])
+      setSuccess({
+        fb: r.facebook?.display_name || '?',
+        ig: r.instagram?.display_name || null,
+      })
+      // Esperar 2s para que el usuario vea el resultado antes de cerrar
+      setTimeout(onSuccess, 2000)
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <h2 className="font-semibold text-gray-900">Asignar Page de Business a organización</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="px-6 py-10 text-gray-500">Cargando Pages del Business...</div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+            <p className="text-sm text-gray-600">
+              Usa esto cuando una Page vive en tu Business Manager pero el OAuth de
+              Facebook no la devuelve (modelo agencia). Las credenciales vienen del
+              System User configurado en server.
+            </p>
+
+            {loadError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {loadError}
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Organización destino <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                required
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">— Elige org —</option>
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} ({o.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Page <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedPageId}
+                onChange={(e) => setSelectedPageId(e.target.value)}
+                required
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">— Elige Page —</option>
+                {pages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || p.id} {p.kind === 'client' ? '· cliente' : '· owned'}
+                    {!p.canPublish ? ' · ⚠️ sin Create content' : ''}
+                  </option>
+                ))}
+              </select>
+              {pages.length === 0 && !loadError && (
+                <p className="mt-1 text-xs text-yellow-700">
+                  No hay Pages disponibles. Verifica que el System User tenga Pages
+                  asignadas en Business Settings.
+                </p>
+              )}
+            </div>
+
+            {selectedPage?.hasInstagram && (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={includeIg}
+                  onChange={(e) => setIncludeIg(e.target.checked)}
+                />
+                Importar también la Instagram Business vinculada
+              </label>
+            )}
+
+            {selectedPage && !selectedPage.canPublish && (
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                ⚠️ El System User no tiene <code>CREATE_CONTENT</code> ni <code>MANAGE</code>{' '}
+                sobre esta Page. Se puede asignar, pero las publicaciones van a fallar
+                hasta que ajustes permisos en Business Settings.
+              </div>
+            )}
+
+            {submitError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                ✅ Asignada: <strong>{success.fb}</strong>
+                {success.ig && (
+                  <>
+                    {' '}
+                    + Instagram <strong>{success.ig}</strong>
+                  </>
+                )}
+              </div>
+            )}
+
+            {warnings.length > 0 && (
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                <p className="font-medium">Advertencias:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cerrar
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !!success}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {submitting ? 'Asignando...' : 'Asignar'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   )
 }

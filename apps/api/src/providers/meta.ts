@@ -440,3 +440,97 @@ function latestValue(entry: InsightsEntry | undefined): number | undefined {
 }
 
 export const metaProvider = new MetaProvider()
+
+// ============== Helpers para modelo "agencia central" ==============
+// Estos NO usan el OAuth de usuario — usan el System User token del Business
+// Portfolio (META_SYSTEM_USER_TOKEN), igual que el módulo de Ads.
+// Se usan desde el endpoint admin que asigna Pages a orgs explícitamente,
+// paralelo a /api/ads/accounts. No los uses en flows OAuth de cliente.
+
+function getSystemUserToken(): string {
+  const token = process.env.META_SYSTEM_USER_TOKEN
+  if (!token) throw new Error('META_SYSTEM_USER_TOKEN no configurado')
+  return token
+}
+
+/**
+ * Lista las Pages owned + client del Business Portfolio, con sus page_access_tokens
+ * (si el System User puede generarlos). Útil para el dropdown del modal admin
+ * de "Asignar Page a org".
+ *
+ * `tasks` indica qué puede hacer el System User sobre cada Page. Para postear
+ * orgánicamente necesita incluir CREATE_CONTENT o MANAGE.
+ */
+export async function listBusinessOwnedPages(): Promise<{
+  data: Array<{
+    id: string
+    name?: string
+    access_token?: string
+    tasks?: string[]
+    instagram_business_account?: { id: string }
+    kind: 'owned' | 'client'
+  }>
+}> {
+  const businessId = process.env.META_BUSINESS_ID
+  if (!businessId) throw new Error('META_BUSINESS_ID no configurado')
+  const token = getSystemUserToken()
+  const fields = 'id,name,access_token,tasks,instagram_business_account'
+
+  type RawPage = {
+    id: string
+    name?: string
+    access_token?: string
+    tasks?: string[]
+    instagram_business_account?: { id: string }
+  }
+  const [owned, client] = await Promise.all([
+    fetch(`${GRAPH_BASE}/${businessId}/owned_pages?fields=${fields}&access_token=${token}&limit=500`)
+      .then((r) => (r.ok ? r.json() : { data: [] }) as Promise<{ data?: RawPage[] }>)
+      .catch(() => ({ data: [] })),
+    fetch(`${GRAPH_BASE}/${businessId}/client_pages?fields=${fields}&access_token=${token}&limit=500`)
+      .then((r) => (r.ok ? r.json() : { data: [] }) as Promise<{ data?: RawPage[] }>)
+      .catch(() => ({ data: [] })),
+  ])
+
+  const merged: Array<{
+    id: string
+    name?: string
+    access_token?: string
+    tasks?: string[]
+    instagram_business_account?: { id: string }
+    kind: 'owned' | 'client'
+  }> = []
+  for (const p of owned.data || []) merged.push({ ...p, kind: 'owned' })
+  for (const p of client.data || []) merged.push({ ...p, kind: 'client' })
+  return { data: merged }
+}
+
+/**
+ * Obtiene UNA Page específica con todos los fields (incluye access_token si
+ * el System User tiene "Create content" sobre ella). Usado por el endpoint
+ * admin al persistir la asignación.
+ */
+export async function getPageWithSystemToken(pageId: string): Promise<{
+  id: string
+  name?: string
+  access_token?: string
+  tasks?: string[]
+  picture?: { data?: { url?: string } }
+  instagram_business_account?: { id: string }
+}> {
+  const token = getSystemUserToken()
+  const fields = 'id,name,access_token,tasks,picture.type(large),instagram_business_account'
+  const res = await fetch(`${GRAPH_BASE}/${pageId}?fields=${fields}&access_token=${token}`)
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as GraphError
+    throw new Error(`No se pudo obtener Page ${pageId}: ${err.error?.message || res.statusText}`)
+  }
+  return (await res.json()) as {
+    id: string
+    name?: string
+    access_token?: string
+    tasks?: string[]
+    picture?: { data?: { url?: string } }
+    instagram_business_account?: { id: string }
+  }
+}
