@@ -4,6 +4,7 @@ import { metaProvider } from '../providers/meta'
 import { encryptToken } from '../lib/encryption'
 import { supabaseAdmin } from '../lib/supabase'
 import { consumePendingState } from '../lib/oauth-state'
+import { dbg } from '../lib/oauth-debug'
 
 const callback = new Hono()
 
@@ -162,16 +163,47 @@ async function saveMetaSubAccounts(
   orgId: string,
   userId: string,
 ): Promise<{ pages: number; instagram: number }> {
+  // Debug: verificar que el token funciona antes de pedir /me/accounts
+  await metaProvider.getMe(userAccessToken)
+
   const pages = await metaProvider.getPages(userAccessToken)
   console.log(`[oauth] meta: discovered ${pages.length} Page(s) for org ${orgId}`)
 
   let igCount = 0
+  let kept = 0
 
   for (const page of pages) {
-    if (!page.access_token) {
-      console.warn(`[oauth] meta: Page ${page.id} sin access_token (probablemente falta pages_show_list/manage scope)`)
+    const reasons: string[] = []
+    if (!page.id) reasons.push('missing_id')
+    if (!page.name) reasons.push('missing_name')
+    if (!page.access_token) reasons.push('missing_page_access_token')
+    const hasPublishTask =
+      Array.isArray(page.tasks) &&
+      (page.tasks.includes('CREATE_CONTENT') ||
+        page.tasks.includes('MANAGE') ||
+        page.tasks.includes('MODERATE'))
+    if (!hasPublishTask && page.tasks !== undefined) {
+      // tasks=undefined puede pasar si el field no fue concedido; en ese caso
+      // confiamos en access_token como signal y NO descartamos.
+      reasons.push('missing_publish_task')
+    }
+    const keep = reasons.length === 0
+    dbg('filter decision', {
+      page_id: page.id,
+      page_name: page.name,
+      keep,
+      reasons,
+      tasks: page.tasks || [],
+      has_token: Boolean(page.access_token),
+    })
+
+    if (!keep) {
+      console.warn(
+        `[oauth] meta: descartando Page ${page.id} (${page.name || 'sin nombre'}): ${reasons.join(', ')}`,
+      )
       continue
     }
+    kept++
 
     const pageTokenEncrypted = encryptToken(page.access_token)
     const { error: pageErr } = await supabaseAdmin.from('social_accounts').upsert(
@@ -232,7 +264,11 @@ async function saveMetaSubAccounts(
     }
   }
 
-  return { pages: pages.length, instagram: igCount }
+  dbg('filter summary', { raw_count: pages.length, kept_count: kept, instagram: igCount })
+
+  // Devuelve "pages" = cuántas se persistieron (kept), no el raw count. Eso es
+  // lo que el callback usa para decidir si redirigir con error=no_pages.
+  return { pages: kept, instagram: igCount }
 }
 
 export { callback }
