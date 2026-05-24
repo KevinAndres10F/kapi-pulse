@@ -68,7 +68,11 @@ async function resolveOrgMembership(userId: string, orgId: string): Promise<OrgR
     .eq('organization_id', orgId)
     .maybeSingle()
 
-  if (error || !data) return null
+  if (error) {
+    console.error('[withOrgAuth] resolveOrgMembership error:', error)
+    return null
+  }
+  if (!data) return null
   return data.role as OrgRole
 }
 
@@ -97,23 +101,28 @@ async function extractOrgIdFromBody(c: Context): Promise<string | null> {
  */
 export function withOrgAuth(minRole: OrgRole = 'viewer'): MiddlewareHandler {
   return async (c, next) => {
-    const userId = await resolveUserFromRequest(c)
-    if (!userId) return c.json({ error: 'unauthorized' }, 401)
+    try {
+      const userId = await resolveUserFromRequest(c)
+      if (!userId) return c.json({ error: 'unauthorized' }, 401)
 
-    let orgId = extractOrgId(c)
-    if (!orgId && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(c.req.method)) {
-      orgId = await extractOrgIdFromBody(c)
+      let orgId = extractOrgId(c)
+      if (!orgId && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(c.req.method)) {
+        orgId = await extractOrgIdFromBody(c)
+      }
+      if (!orgId) return c.json({ error: 'missing org_id' }, 400)
+
+      const role = await resolveOrgMembership(userId, orgId)
+      if (!role) return c.json({ error: 'forbidden: not a member' }, 403)
+
+      if (ROLE_RANK[role] < ROLE_RANK[minRole]) {
+        return c.json({ error: `forbidden: ${minRole} role required`, role }, 403)
+      }
+
+      c.set('auth', { userId, orgId, role })
+      await next()
+    } catch (err) {
+      console.error('[withOrgAuth] unexpected error:', err)
+      return c.json({ error: err instanceof Error ? err.message : 'unknown' }, 500)
     }
-    if (!orgId) return c.json({ error: 'missing org_id' }, 400)
-
-    const role = await resolveOrgMembership(userId, orgId)
-    if (!role) return c.json({ error: 'forbidden: not a member' }, 403)
-
-    if (ROLE_RANK[role] < ROLE_RANK[minRole]) {
-      return c.json({ error: `forbidden: ${minRole} role required`, role }, 403)
-    }
-
-    c.set('auth', { userId, orgId, role })
-    await next()
   }
 }

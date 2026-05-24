@@ -19,6 +19,18 @@ async function getPublishQueue() {
 
 const posts = new Hono()
 
+const MediaItemSchema = z.object({
+  assetId: z.string().uuid().optional(),
+  storagePath: z.string().optional(),
+  storageBucket: z.string().optional(),
+  mediaType: z.enum(['image', 'video', 'carousel']).default('image'),
+  mimeType: z.string().optional(),
+  position: z.number().int().min(0).optional(),
+  altText: z.string().max(500).optional(),
+}).refine((v) => v.assetId || v.storagePath, {
+  message: 'media item requires assetId or storagePath',
+})
+
 const CreatePostSchema = z.object({
   organizationId: z.string().uuid(),
   createdBy: z.string().uuid(),
@@ -30,6 +42,7 @@ const CreatePostSchema = z.object({
     content: z.string().max(5000),
     hashtags: z.array(z.string()).optional(),
     linkUrl: z.string().url().optional(),
+    media: z.array(MediaItemSchema).optional(),
   })).min(1),
 })
 
@@ -118,6 +131,61 @@ posts.post('/', async (c) => {
     .select()
 
   if (variantsError) return c.json({ error: variantsError.message }, 500)
+
+  // Crear post_media para cada variante. Cuando viene un assetId, resolvemos
+  // storage_path y bucket desde generated_assets para mantener consistencia
+  // con el worker (que lee storage_path + storage_bucket).
+  const mediaRows: Array<{
+    post_variant_id: string
+    position: number
+    media_type: string
+    storage_path: string
+    storage_bucket: string
+    mime_type: string | null
+    generated_asset_id: string | null
+  }> = []
+
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i]
+    const createdVariant = createdVariants?.[i]
+    if (!v.media || v.media.length === 0 || !createdVariant) continue
+
+    const assetIds = v.media.map((m) => m.assetId).filter((x): x is string => !!x)
+    const assetById: Record<string, { storage_path: string; storage_bucket: string | null; mime_type: string | null }> = {}
+    if (assetIds.length > 0) {
+      const { data: assets } = await supabaseAdmin
+        .from('generated_assets')
+        .select('id, storage_path, storage_bucket, mime_type')
+        .in('id', assetIds)
+        .eq('organization_id', organizationId)
+        .eq('is_deleted', false)
+      for (const a of assets || []) assetById[a.id as string] = a as never
+    }
+
+    for (let j = 0; j < v.media.length; j++) {
+      const m = v.media[j]
+      const fromAsset = m.assetId ? assetById[m.assetId] : null
+      const storagePath = fromAsset?.storage_path || m.storagePath
+      if (!storagePath) continue
+      mediaRows.push({
+        post_variant_id: createdVariant.id,
+        position: m.position ?? j,
+        media_type: m.mediaType,
+        storage_path: storagePath,
+        storage_bucket: fromAsset?.storage_bucket || m.storageBucket || 'campaign-uploads',
+        mime_type: fromAsset?.mime_type || m.mimeType || null,
+        generated_asset_id: m.assetId || null,
+      })
+    }
+  }
+
+  if (mediaRows.length > 0) {
+    const { error: mediaError } = await supabaseAdmin.from('post_media').insert(mediaRows)
+    if (mediaError) {
+      console.error('[posts] media insert error:', mediaError)
+      return c.json({ error: mediaError.message }, 500)
+    }
+  }
 
   // Si está programado, encolar job de publicación en BullMQ con delay
   if (scheduledAt) {
