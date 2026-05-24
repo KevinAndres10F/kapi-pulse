@@ -13,6 +13,7 @@ import { assets } from './routes/assets'
 import { campaigns as studioCampaigns } from './routes/studio/campaigns'
 import { studioGenerate } from './routes/studio/generate'
 import { ads, adsAdmin } from './routes/ads'
+import { adminSocial } from './routes/admin-social'
 import { supabaseAdmin } from './lib/supabase'
 
 const app = new Hono()
@@ -89,6 +90,9 @@ app.route('/api/studio/generate', studioGenerate)
 // Meta Ads (modelo agencia central — System User token)
 app.route('/api/ads', ads)
 app.route('/api/admin/ads', adsAdmin)
+
+// Asignación admin de Pages/IG orgánicas (paralelo a /api/ads/accounts)
+app.route('/api/admin/social-accounts', adminSocial)
 
 // API de cuentas sociales
 app.get('/api/social-accounts', async (c) => {
