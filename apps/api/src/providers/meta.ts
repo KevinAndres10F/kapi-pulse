@@ -31,14 +31,29 @@ import type {
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0'
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`
 
-const FB_SCOPES = [
-  'pages_show_list',
-  'pages_read_engagement',
-  'pages_manage_posts',
-  'instagram_basic',
-  'instagram_content_publish',
-  'instagram_manage_insights',
-].join(',')
+// Scopes del flow Facebook Login (provider 'meta'). Por DEFAULT solo
+// Facebook Pages — los scopes que cualquier app tiene disponibles sin
+// App Review.
+//
+// IMPORTANTE: NO incluir instagram_* por default. Son scopes legacy del
+// Graph API clásico que requieren App Review en apps nuevas. Si la app
+// los tiene aprobados, sumarlos via META_EXTRA_SCOPES (coma-separados):
+//
+//   META_EXTRA_SCOPES=instagram_basic,instagram_manage_insights
+//
+// Sin esos scopes el callback igualmente descubre Pages, pero la IG
+// Business vinculada solo aparece con id (sin username/profile_picture).
+// Para conectar IG con datos completos SIN Facebook Page, usar el flow
+// separado /api/connect/instagram (providers/instagram.ts).
+const FB_BASE_SCOPES = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']
+
+function buildFbScopes(): string {
+  const extras = (process.env.META_EXTRA_SCOPES || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return [...FB_BASE_SCOPES, ...extras].join(',')
+}
 
 export class MetaProvider implements SocialProvider {
   readonly name = 'meta'
@@ -47,11 +62,13 @@ export class MetaProvider implements SocialProvider {
   private appSecret = process.env.META_APP_SECRET!
 
   getAuthUrl(state: string, redirectUri: string): string {
+    const scope = buildFbScopes()
+    console.log(`[meta] OAuth scope: ${scope}`)
     const params = new URLSearchParams({
       client_id: this.appId,
       redirect_uri: redirectUri,
       state,
-      scope: FB_SCOPES,
+      scope,
       response_type: 'code',
     })
     return `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params}`
