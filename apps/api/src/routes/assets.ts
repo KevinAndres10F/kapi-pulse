@@ -63,33 +63,41 @@ assets.post('/upload-url', withOrgAuth('editor'), async (c) => {
 })
 
 assets.get('/', withOrgAuth('viewer'), async (c) => {
-  const { orgId } = c.var.auth
-  const kind = c.req.query('kind')
-  const limit = Math.min(Number(c.req.query('limit')) || 50, 200)
-  const offset = Number(c.req.query('offset')) || 0
+  try {
+    const { orgId } = c.var.auth
+    const kind = c.req.query('kind')
+    const limit = Math.min(Number(c.req.query('limit')) || 50, 200)
+    const offset = Number(c.req.query('offset')) || 0
 
-  let query = supabaseAdmin
-    .from('generated_assets')
-    .select('id, kind, source, storage_path, storage_bucket, mime_type, width, height, duration_seconds, size_bytes, prompt, parent_asset_id, metadata, created_at')
-    .eq('organization_id', orgId)
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    let query = supabaseAdmin
+      .from('generated_assets')
+      .select('id, kind, source, storage_path, storage_bucket, mime_type, width, height, duration_seconds, size_bytes, prompt, parent_asset_id, metadata, created_at')
+      .eq('organization_id', orgId)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-  if (kind) query = query.eq('kind', kind)
+    if (kind) query = query.eq('kind', kind)
 
-  const { data, error } = await query
-  if (error) return c.json({ error: error.message }, 500)
+    const { data, error } = await query
+    if (error) {
+      console.error('[assets] query error:', error)
+      return c.json({ error: error.message }, 500)
+    }
 
-  // Resolve signed URLs in parallel for the page
-  const enriched = await Promise.all(
-    (data || []).map(async (a) => ({
-      ...a,
-      signed_url: await getSignedDownloadUrl(a.storage_path, { bucket: a.storage_bucket || 'generated-assets' }).catch(() => null),
-    })),
-  )
+    // Resolve signed URLs in parallel for the page
+    const enriched = await Promise.all(
+      (data || []).map(async (a) => ({
+        ...a,
+        signed_url: await getSignedDownloadUrl(a.storage_path, { bucket: a.storage_bucket || 'generated-assets' }).catch(() => null),
+      })),
+    )
 
-  return c.json({ assets: enriched })
+    return c.json({ assets: enriched })
+  } catch (err) {
+    console.error('[assets] unexpected error:', err)
+    return c.json({ error: err instanceof Error ? err.message : 'unknown' }, 500)
+  }
 })
 
 assets.get('/:id', withOrgAuth('viewer'), async (c) => {

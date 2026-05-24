@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, Save, ArrowLeft, Plus, X, Sparkles, Loader2 } from 'lucide-react'
+import { Send, Save, ArrowLeft, Plus, X, Sparkles, Loader2, Upload, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
 
 interface SocialAccount {
   id: string
@@ -13,6 +13,16 @@ interface SocialAccount {
   status: string
 }
 
+interface MediaItem {
+  assetId: string
+  storagePath: string
+  bucket: string
+  mediaType: 'image' | 'video'
+  mimeType: string
+  previewUrl: string
+  name: string
+}
+
 interface Variant {
   socialAccountId: string
   provider: string
@@ -20,7 +30,13 @@ interface Variant {
   content: string
   hashtags: string
   linkUrl: string
+  media: MediaItem[]
 }
+
+// Redes que requieren al menos 1 media para publicar
+const MEDIA_REQUIRED_PROVIDERS = new Set(['instagram', 'tiktok'])
+const VIDEO_EXTS = new Set(['mp4', 'mov'])
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp'])
 
 const PROVIDER_COLORS: Record<string, string> = {
   facebook: 'border-blue-500 bg-blue-50',
@@ -61,7 +77,96 @@ export default function NewPostPage() {
   const [aiSuggestions, setAiSuggestions] = useState<
     Array<{ content: string; hashtags: string[]; rationale: string }>
   >([])
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const supabase = createClient()
+
+  async function getAuthToken(): Promise<string | null> {
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token ?? null
+  }
+
+  async function uploadMediaFiles(files: FileList | File[]) {
+    if (!orgId || variants.length === 0) return
+    const list = Array.from(files)
+    if (list.length === 0) return
+    setUploadingMedia(true)
+    setError(null)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const token = await getAuthToken()
+      if (!token) {
+        setError('Sesión no válida. Recarga la página.')
+        return
+      }
+      const newMedia: MediaItem[] = []
+      for (const file of list) {
+        const extRaw = (file.name.split('.').pop() || '').toLowerCase()
+        const ext = extRaw === 'jpg' ? 'jpg' : extRaw
+        if (!IMAGE_EXTS.has(ext) && !VIDEO_EXTS.has(ext)) {
+          setError(`Tipo no soportado: ${file.name}. Usa png/jpg/jpeg/webp/mp4/mov.`)
+          continue
+        }
+        const isVideo = VIDEO_EXTS.has(ext)
+        const initRes = await fetch(`${apiUrl}/api/assets/upload-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ orgId, ext, kind: isVideo ? 'video' : 'image', bucket: 'campaign-uploads' }),
+        })
+        if (!initRes.ok) {
+          const body = await initRes.json().catch(() => ({}))
+          setError(body.error || `Error iniciando upload de ${file.name}`)
+          continue
+        }
+        const init = await initRes.json()
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const uploadUrl = `${supabaseUrl}/storage/v1/object/upload/sign/${init.bucket}/${init.storagePath}?token=${init.token}`
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || (isVideo ? 'video/mp4' : 'image/jpeg') },
+          body: file,
+        })
+        if (!uploadRes.ok) {
+          setError(`Error subiendo ${file.name}`)
+          continue
+        }
+
+        newMedia.push({
+          assetId: init.assetId,
+          storagePath: init.storagePath,
+          bucket: init.bucket,
+          mediaType: isVideo ? 'video' : 'image',
+          mimeType: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+          previewUrl: URL.createObjectURL(file),
+          name: file.name,
+        })
+      }
+      if (newMedia.length > 0) {
+        setVariants((prev) => {
+          const updated = [...prev]
+          updated[activeTab] = { ...updated[activeTab], media: [...(updated[activeTab].media || []), ...newMedia] }
+          return updated
+        })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error subiendo media')
+    } finally {
+      setUploadingMedia(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function removeMedia(variantIndex: number, mediaIndex: number) {
+    setVariants((prev) => {
+      const updated = [...prev]
+      const media = [...(updated[variantIndex].media || [])]
+      const removed = media.splice(mediaIndex, 1)[0]
+      if (removed?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl)
+      updated[variantIndex] = { ...updated[variantIndex], media }
+      return updated
+    })
+  }
 
   async function generateWithAI() {
     if (aiTopic.trim().length < 3 || !currentVariant) return
@@ -125,6 +230,7 @@ export default function NewPostPage() {
       content: '',
       hashtags: '',
       linkUrl: '',
+      media: [],
     }])
     setActiveTab(variants.length)
   }
@@ -151,6 +257,12 @@ export default function NewPostPage() {
       return
     }
 
+    const missingMedia = variants.find((v) => MEDIA_REQUIRED_PROVIDERS.has(v.provider) && (v.media?.length ?? 0) === 0)
+    if (missingMedia) {
+      setError(`${missingMedia.provider} requiere al menos una imagen o video. Súbelo en la pestaña correspondiente.`)
+      return
+    }
+
     setSaving(true)
     setError(null)
 
@@ -167,6 +279,12 @@ export default function NewPostPage() {
         content: v.content,
         hashtags: v.hashtags ? v.hashtags.split(',').map((h) => h.trim()).filter(Boolean) : [],
         linkUrl: v.linkUrl || undefined,
+        media: (v.media || []).map((m, i) => ({
+          assetId: m.assetId,
+          mediaType: m.mediaType,
+          mimeType: m.mimeType,
+          position: i,
+        })),
       })),
     }
 
@@ -287,6 +405,62 @@ export default function NewPostPage() {
                       {currentVariant.content.length}/{charLimit}
                     </span>
                   </div>
+                </div>
+
+                {/* Media uploader */}
+                <div className="rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-600">
+                      Media {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider) && <span className="text-red-500">*</span>}
+                      <span className="ml-1 text-gray-400">(imágenes y videos)</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingMedia}
+                      className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      {uploadingMedia ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      {uploadingMedia ? 'Subiendo...' : 'Subir archivo'}
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => { if (e.target.files) uploadMediaFiles(e.target.files) }}
+                  />
+                  {currentVariant.media && currentVariant.media.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {currentVariant.media.map((m, i) => (
+                        <div key={m.assetId} className="relative aspect-square rounded-md border border-gray-200 bg-gray-50 overflow-hidden">
+                          {m.mediaType === 'image' ? (
+                            <img src={m.previewUrl} alt={m.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <video src={m.previewUrl} className="h-full w-full object-cover" muted />
+                          )}
+                          <div className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                            {m.mediaType === 'image' ? <ImageIcon className="inline h-3 w-3" /> : <VideoIcon className="inline h-3 w-3" />}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeMedia(activeTab, i)}
+                            className="absolute top-1 right-1 rounded-full bg-white/90 p-0.5 shadow hover:bg-white"
+                          >
+                            <X className="h-3 w-3 text-gray-700" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider)
+                        ? `${currentVariant.provider} requiere al menos 1 imagen o video`
+                        : 'Sin archivos. Acepta png, jpg, webp, mp4, mov.'}
+                    </p>
+                  )}
                 </div>
 
                 <input

@@ -63,6 +63,13 @@ app.use(
   }),
 )
 
+// Error handler global: devuelve JSON con el mensaje real en vez de texto plano
+app.onError((err, c) => {
+  console.error(`[onError] ${c.req.method} ${c.req.path}:`, err)
+  const message = err instanceof Error ? err.message : String(err)
+  return c.json({ error: message }, 500)
+})
+
 // Health check
 app.get('/', (c) => c.json({ service: 'kapi-pulse-api', status: 'ok' }))
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }))
