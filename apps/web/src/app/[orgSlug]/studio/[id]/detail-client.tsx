@@ -48,25 +48,25 @@ export function CampaignDetailClient({
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{initialCampaign.name}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">{initialCampaign.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Creada {new Date(initialCampaign.created_at).toLocaleString()} · {initialCampaign.total_credits_spent ?? 0} créditos consumidos
           </p>
         </div>
         <button
           onClick={refresh}
           disabled={loading}
-          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground hover:bg-muted/40"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Actualizar
         </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Pasos</h2>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Pasos</h2>
         <ul className="space-y-2">
           {steps.map((s) => (
-            <li key={s.step_number} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+            <li key={s.step_number} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
               <span>
                 <strong className="mr-2">#{s.step_number}</strong>
                 {s.step_type}
@@ -76,9 +76,9 @@ export function CampaignDetailClient({
                   s.state === 'done'
                     ? 'bg-emerald-100 text-emerald-700'
                     : s.state === 'failed'
-                      ? 'bg-red-100 text-red-700'
+                      ? 'bg-red-100 text-destructive'
                       : s.state === 'skipped'
-                        ? 'bg-gray-100 text-gray-500'
+                        ? 'bg-muted text-muted-foreground'
                         : 'bg-amber-100 text-amber-700'
                 }`}
               >
@@ -90,13 +90,13 @@ export function CampaignDetailClient({
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Assets seleccionados ({assets.length})</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Assets seleccionados ({assets.length})</h2>
         {assets.length === 0 ? (
-          <p className="text-sm text-gray-500">No hay assets seleccionados en esta campaña aún.</p>
+          <p className="text-sm text-muted-foreground">No hay assets seleccionados en esta campaña aún.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {assets.map((a) => (
-              <li key={a.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+              <li key={a.id} className="overflow-hidden rounded-lg border border-border bg-card">
                 {a.signed_url ? (
                   a.kind === 'video' || a.kind === 'avatar_video' ? (
                     <video src={a.signed_url} controls className="aspect-square w-full bg-black" />
@@ -105,9 +105,9 @@ export function CampaignDetailClient({
                     <img src={a.signed_url} alt={a.kind} className="aspect-square w-full object-cover" />
                   )
                 ) : (
-                  <div className="aspect-square bg-gray-100" />
+                  <div className="aspect-square bg-muted" />
                 )}
-                <div className="p-2 text-xs text-gray-600">{a.kind}</div>
+                <div className="p-2 text-xs text-muted-foreground">{a.kind}</div>
               </li>
             ))}
           </ul>

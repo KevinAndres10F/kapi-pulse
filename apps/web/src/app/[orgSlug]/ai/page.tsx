@@ -42,16 +42,16 @@ export default function AIPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-blue-600" />
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <Sparkles className="h-6 w-6 text-primary" />
           IA Editorial
         </h1>
-        <p className="mt-1 text-gray-600">
+        <p className="mt-1 text-muted-foreground">
           Generá contenido, mejorá textos existentes y analizá competidores con Claude.
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-border">
         <TabButton active={tab === 'generate'} onClick={() => setTab('generate')} icon={<Sparkles className="h-4 w-4" />}>
           Generar
         </TabButton>
@@ -86,8 +86,8 @@ function TabButton({
       onClick={onClick}
       className={`flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors ${
         active
-          ? 'border-b-2 border-blue-600 text-blue-700'
-          : 'text-gray-500 hover:text-gray-700'
+          ? 'border-b-2 border-blue-600 text-primary'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       {icon}
@@ -153,28 +153,28 @@ function GenerateTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-semibold text-gray-900">Sobre qué querés escribir</h2>
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
+        <h2 className="font-semibold text-foreground">Sobre qué querés escribir</h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Tema o idea</label>
+          <label className="block text-sm font-medium text-foreground">Tema o idea</label>
           <textarea
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             rows={3}
             maxLength={2000}
             placeholder="Ej: Lanzamiento de nuestra nueva línea de productos sustentables hecha por mujeres artesanas del Ecuador"
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Red social</label>
+            <label className="block text-sm font-medium text-foreground">Red social</label>
             <select
               value={platform}
               onChange={(e) => setPlatform(e.target.value as Platform)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
             >
               {PLATFORMS.map((p) => (
                 <option key={p.value} value={p.value}>
@@ -184,11 +184,11 @@ function GenerateTab() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Variantes</label>
+            <label className="block text-sm font-medium text-foreground">Variantes</label>
             <select
               value={nVariants}
               onChange={(e) => setNVariants(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
             >
               {[2, 3, 4, 5].map((n) => (
                 <option key={n} value={n}>
@@ -200,19 +200,19 @@ function GenerateTab() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Tono</label>
+          <label className="block text-sm font-medium text-foreground">Tono</label>
           <input
             type="text"
             value={tone}
             onChange={(e) => setTone(e.target.value)}
             maxLength={200}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Contexto de marca / audiencia <span className="text-gray-400">(opcional)</span>
+          <label className="block text-sm font-medium text-foreground">
+            Contexto de marca / audiencia <span className="text-muted-foreground">(opcional)</span>
           </label>
           <textarea
             value={context}
@@ -220,7 +220,7 @@ function GenerateTab() {
             rows={2}
             maxLength={2000}
             placeholder="Ej: Somos KAPI, agencia de marketing en Quito. Audiencia: PyMEs ecuatorianas."
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
           />
         </div>
 
@@ -229,7 +229,7 @@ function GenerateTab() {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {loading ? 'Generando con Claude...' : 'Generar variantes'}
@@ -238,13 +238,13 @@ function GenerateTab() {
 
       <div className="space-y-3">
         {loading && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-400">
+          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
             <p className="mt-2 text-sm">Claude está pensando...</p>
           </div>
         )}
         {!loading && variants.length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center text-gray-400">
+          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-12 text-center text-muted-foreground">
             <Sparkles className="mx-auto h-8 w-8" />
             <p className="mt-2 text-sm">Las variantes aparecerán acá.</p>
           </div>
@@ -274,26 +274,26 @@ function VariantCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between">
-        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-primary">
           Variante {index + 1}
         </span>
         <button
           onClick={copy}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm text-gray-900">{variant.content}</p>
+      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{variant.content}</p>
       {variant.hashtags.length > 0 && (
-        <p className="mt-3 text-sm text-blue-600">
+        <p className="mt-3 text-sm text-primary">
           {variant.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
         </p>
       )}
-      <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs italic text-gray-600">
+      <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
         💡 {variant.rationale}
       </div>
     </div>
@@ -354,8 +354,8 @@ function ImproveTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-semibold text-gray-900">Texto a mejorar</h2>
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
+        <h2 className="font-semibold text-foreground">Texto a mejorar</h2>
 
         <textarea
           value={text}
@@ -363,17 +363,17 @@ function ImproveTab() {
           rows={8}
           maxLength={5000}
           placeholder="Pegá acá el texto que querés mejorar..."
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Red social <span className="text-gray-400">(opcional, Claude la detecta si no la indicás)</span>
+          <label className="block text-sm font-medium text-foreground">
+            Red social <span className="text-muted-foreground">(opcional, Claude la detecta si no la indicás)</span>
           </label>
           <select
             value={platform}
             onChange={(e) => setPlatform(e.target.value as Platform | '')}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
             <option value="">— Auto-detectar —</option>
             {PLATFORMS.map((p) => (
@@ -385,8 +385,8 @@ function ImproveTab() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Qué querés mejorar <span className="text-gray-400">(opcional)</span>
+          <label className="block text-sm font-medium text-foreground">
+            Qué querés mejorar <span className="text-muted-foreground">(opcional)</span>
           </label>
           <input
             type="text"
@@ -394,7 +394,7 @@ function ImproveTab() {
             onChange={(e) => setGoal(e.target.value)}
             maxLength={500}
             placeholder="Ej: que sea más corto, gancho más fuerte, tono más casual..."
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
           />
         </div>
 
@@ -403,7 +403,7 @@ function ImproveTab() {
         <button
           onClick={handleImprove}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
           {loading ? 'Mejorando...' : 'Mejorar texto'}
@@ -412,13 +412,13 @@ function ImproveTab() {
 
       <div className="space-y-3">
         {loading && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-400">
+          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
             <p className="mt-2 text-sm">Claude está pensando...</p>
           </div>
         )}
         {!loading && !result && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center text-gray-400">
+          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-12 text-center text-muted-foreground">
             <Wand2 className="mx-auto h-8 w-8" />
             <p className="mt-2 text-sm">Las versiones mejoradas aparecerán acá.</p>
           </div>
@@ -455,21 +455,21 @@ function ImprovedCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">
           Versión {index + 1}
         </span>
         <button
           onClick={copy}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm text-gray-900">{variant.content}</p>
-      <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs italic text-gray-600">
+      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{variant.content}</p>
+      <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
         ✏️ {variant.changes}
       </div>
     </div>
@@ -570,34 +570,34 @@ function AnalyzeTab() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-        <h2 className="font-semibold text-gray-900">Datos del competidor</h2>
+      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
+        <h2 className="font-semibold text-foreground">Datos del competidor</h2>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nombre / marca</label>
+            <label className="block text-sm font-medium text-foreground">Nombre / marca</label>
             <input
               type="text"
               value={competitorName}
               onChange={(e) => setCompetitorName(e.target.value)}
               placeholder="Ej: Acme Marketing Agency"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Sector (opcional)</label>
+            <label className="block text-sm font-medium text-foreground">Sector (opcional)</label>
             <input
               type="text"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               placeholder="Ej: Marketing digital B2B"
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-foreground">
             Pregunta específica (opcional)
           </label>
           <input
@@ -606,32 +606,32 @@ function AnalyzeTab() {
             onChange={(e) => setFocusQuestion(e.target.value)}
             maxLength={500}
             placeholder="Ej: ¿qué hace que sus posts de LinkedIn tengan tanto engagement?"
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
           />
         </div>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-5">
+      <div className="space-y-3 rounded-lg border border-border bg-card p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">
+          <h2 className="font-semibold text-foreground">
             Muestras de posts ({samples.length}/20)
           </h2>
           <button
             onClick={addSample}
             disabled={samples.length >= 20}
-            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-md border border-input px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/40 disabled:opacity-50"
           >
             + Agregar muestra
           </button>
         </div>
 
         {samples.map((s, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-2">
+          <div key={i} className="rounded-lg border border-border p-3 space-y-2">
             <div className="flex items-center gap-2">
               <select
                 value={s.platform}
                 onChange={(e) => updateSample(i, 'platform', e.target.value)}
-                className="rounded border border-gray-300 px-2 py-1 text-xs"
+                className="rounded border border-input px-2 py-1 text-xs"
               >
                 {PLATFORMS.map((p) => (
                   <option key={p.value} value={p.value}>
@@ -644,12 +644,12 @@ function AnalyzeTab() {
                 value={s.metric}
                 onChange={(e) => updateSample(i, 'metric', e.target.value)}
                 placeholder="Engagement: ej. '450 likes, 23 comentarios' (opcional)"
-                className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
+                className="flex-1 rounded border border-input px-2 py-1 text-xs"
               />
               {samples.length > 1 && (
                 <button
                   onClick={() => removeSample(i)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="text-xs text-red-500 hover:text-destructive"
                   title="Quitar muestra"
                 >
                   Quitar
@@ -662,7 +662,7 @@ function AnalyzeTab() {
               rows={3}
               maxLength={10000}
               placeholder="Pegá acá el texto del post..."
-              className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded border border-input px-2 py-1.5 text-sm"
             />
           </div>
         ))}
@@ -672,7 +672,7 @@ function AnalyzeTab() {
         <button
           onClick={handleAnalyze}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           {loading ? 'Analizando con Claude...' : 'Analizar competidor'}
@@ -680,7 +680,7 @@ function AnalyzeTab() {
       </div>
 
       {loading && (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-gray-400">
+        <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
           <p className="mt-2 text-sm">Claude está analizando las muestras (puede tardar 20-40s)...</p>
         </div>
@@ -688,36 +688,36 @@ function AnalyzeTab() {
 
       {result && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <h3 className="text-lg font-semibold text-gray-900">Resumen ejecutivo</h3>
-            <p className="mt-2 text-sm text-gray-700">{result.summary}</p>
+          <div className="rounded-lg border border-border bg-card p-5">
+            <h3 className="text-lg font-semibold text-foreground">Resumen ejecutivo</h3>
+            <p className="mt-2 text-sm text-foreground">{result.summary}</p>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <h3 className="text-lg font-semibold text-gray-900">Patrones detectados</h3>
+          <div className="rounded-lg border border-border bg-card p-5">
+            <h3 className="text-lg font-semibold text-foreground">Patrones detectados</h3>
             <ul className="mt-3 space-y-3">
               {result.patterns.map((p, i) => (
                 <li key={i} className="border-l-4 border-blue-400 pl-3">
-                  <p className="text-xs font-bold uppercase text-blue-600">{p.category}</p>
-                  <p className="text-sm font-medium text-gray-900">{p.observation}</p>
-                  <p className="mt-0.5 text-xs italic text-gray-500">↳ {p.evidence}</p>
+                  <p className="text-xs font-bold uppercase text-primary">{p.category}</p>
+                  <p className="text-sm font-medium text-foreground">{p.observation}</p>
+                  <p className="mt-0.5 text-xs italic text-muted-foreground">↳ {p.evidence}</p>
                 </li>
               ))}
             </ul>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border-l-4 border-green-500 bg-green-50 p-4">
+            <div className="rounded-lg border-l-4 border-green-500 bg-success/10 p-4">
               <h3 className="font-semibold text-green-900">Fortalezas</h3>
-              <ul className="mt-2 space-y-1.5 text-sm text-green-800">
+              <ul className="mt-2 space-y-1.5 text-sm text-success">
                 {result.strengths.map((s, i) => (
                   <li key={i}>• {s}</li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-lg border-l-4 border-red-500 bg-red-50 p-4">
+            <div className="rounded-lg border-l-4 border-red-500 bg-destructive/10 p-4">
               <h3 className="font-semibold text-red-900">Debilidades / oportunidades</h3>
-              <ul className="mt-2 space-y-1.5 text-sm text-red-800">
+              <ul className="mt-2 space-y-1.5 text-sm text-destructive">
                 {result.weaknesses.map((w, i) => (
                   <li key={i}>• {w}</li>
                 ))}
@@ -744,7 +744,7 @@ function AnalyzeTab() {
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+    <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm text-destructive">
       <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
       <span>{message}</span>
     </div>

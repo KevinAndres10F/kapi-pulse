@@ -127,7 +127,7 @@ export default function AdsPage() {
   }
 
   if (!userId || !orgId) {
-    return <div className="text-gray-500">Cargando sesión...</div>
+    return <div className="text-muted-foreground">Cargando sesión...</div>
   }
 
   return (
@@ -135,11 +135,11 @@ export default function AdsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Megaphone className="h-6 w-6 text-blue-600" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <Megaphone className="h-6 w-6 text-primary" />
             Anuncios pagados
           </h1>
-          <p className="mt-1 text-gray-600">
+          <p className="mt-1 text-muted-foreground">
             Campañas en Meta (Facebook + Instagram). Las creas como borrador y
             el equipo KAPI las aprueba antes de publicar.
           </p>
@@ -147,7 +147,7 @@ export default function AdsPage() {
         <div className="flex gap-2">
           <Link
             href={`/${params.orgSlug}/ads/insights`}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
           >
             <BarChart3 className="h-4 w-4" />
             Insights
@@ -156,7 +156,7 @@ export default function AdsPage() {
             <>
               <button
                 onClick={() => setShowConnectModal(true)}
-                className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
               >
                 <Link2 className="h-4 w-4" />
                 Conectar cuenta
@@ -172,7 +172,7 @@ export default function AdsPage() {
           )}
           <Link
             href={`/${params.orgSlug}/ads/new`}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             Nueva campaña
@@ -182,9 +182,9 @@ export default function AdsPage() {
 
       {/* Aviso si no hay ad accounts conectadas */}
       {accounts.length === 0 && !loading && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+        <div className="rounded-lg border border-warning/30 bg-warning/15 p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-yellow-600" />
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-warning-foreground" />
             <div>
               <p className="font-medium text-yellow-900">
                 No tienes cuentas publicitarias conectadas todavía.
@@ -203,14 +203,14 @@ export default function AdsPage() {
           {accounts.map((acc) => (
             <div
               key={acc.id}
-              className="rounded-lg border border-gray-200 bg-white p-4"
+              className="rounded-lg border border-border bg-card p-4"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{acc.name || 'Sin nombre'}</p>
-                  <p className="mt-1 text-xs text-gray-500">{acc.meta_ad_account_id}</p>
+                  <p className="font-medium text-foreground">{acc.name || 'Sin nombre'}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{acc.meta_ad_account_id}</p>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-success">
                   <CheckCircle2 className="h-3 w-3" />
                   {acc.currency}
                 </span>
@@ -233,33 +233,33 @@ export default function AdsPage() {
       )}
 
       {/* Listado de campañas */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Mis campañas</h2>
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="font-semibold text-foreground">Mis campañas</h2>
         </div>
 
         {error && (
-          <div className="border-b border-red-100 bg-red-50 px-6 py-3 text-sm text-red-700">
+          <div className="border-b border-red-100 bg-destructive/10 px-6 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
 
         {loading && (
-          <div className="px-6 py-10 text-center text-gray-500">Cargando...</div>
+          <div className="px-6 py-10 text-center text-muted-foreground">Cargando...</div>
         )}
 
         {!loading && campaigns.length === 0 && (
           <div className="px-6 py-10 text-center">
             <Megaphone className="mx-auto h-10 w-10 text-gray-300" />
-            <p className="mt-3 text-gray-600">Aún no tienes campañas</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-3 text-muted-foreground">Aún no tienes campañas</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               Crea tu primera campaña y envíala a aprobación.
             </p>
           </div>
         )}
 
         {!loading && campaigns.length > 0 && (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {campaigns.map((c) => {
               const st = statusLabel(c.status)
               const budget = c.daily_budget_cents
@@ -269,16 +269,16 @@ export default function AdsPage() {
                   : '—'
 
               return (
-                <li key={c.id} className="px-6 py-4 hover:bg-gray-50">
+                <li key={c.id} className="px-6 py-4 hover:bg-muted/40">
                   <div className="flex items-start justify-between gap-4">
                     <Link href={`/${params.orgSlug}/ads/${c.id}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="truncate font-medium text-gray-900">{c.name}</p>
+                        <p className="truncate font-medium text-foreground">{c.name}</p>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.color}`}>
                           {st.label}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {objectiveLabel(c.objective)} · {budget}
                         {c.meta_campaign_id && (
                           <>
@@ -287,7 +287,7 @@ export default function AdsPage() {
                               href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${c.meta_campaign_id}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-0.5 text-blue-600 hover:underline"
+                              className="inline-flex items-center gap-0.5 text-primary hover:underline"
                             >
                               Ver en Meta <ExternalLink className="h-3 w-3" />
                             </a>
@@ -295,7 +295,7 @@ export default function AdsPage() {
                         )}
                       </p>
                       {c.rejection_reason && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-1 text-sm text-destructive">
                           Razón de rechazo: {c.rejection_reason}
                         </p>
                       )}
@@ -305,14 +305,14 @@ export default function AdsPage() {
                         <>
                           <button
                             onClick={() => handleSubmit(c.id)}
-                            className="flex items-center gap-1 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                            className="flex items-center gap-1 rounded-md border border-blue-300 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-blue-100"
                           >
                             <Send className="h-3 w-3" />
                             Enviar a aprobación
                           </button>
                           <button
                             onClick={() => handleDelete(c.id, c.name)}
-                            className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -322,7 +322,7 @@ export default function AdsPage() {
                       {c.status === 'rejected' && (
                         <button
                           onClick={() => handleDelete(c.id, c.name)}
-                          className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -424,35 +424,35 @@ function ConnectAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Conectar cuenta publicitaria</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="w-full max-w-lg rounded-lg bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="font-semibold text-foreground">Conectar cuenta publicitaria</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-2 px-6 py-10 text-gray-500">
+          <div className="flex items-center gap-2 px-6 py-10 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Cargando cuentas de tu Business...
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Asigna una Ad Account de tu Business Portfolio a una organización cliente.
               Después esa org puede crear borradores contra esa cuenta.
             </p>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1 block text-sm font-medium text-foreground">
                 Organización <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedOrgId}
                 onChange={(e) => setSelectedOrgId(e.target.value)}
                 required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 <option value="">— Elige org —</option>
                 {orgs.map((o) => (
@@ -464,7 +464,7 @@ function ConnectAccountModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="mb-1 block text-sm font-medium text-foreground">
                 Cuenta publicitaria de Meta <span className="text-red-500">*</span>
               </label>
               {businessAccounts.length > 0 && !useManual ? (
@@ -473,7 +473,7 @@ function ConnectAccountModal({
                     value={selectedMetaId}
                     onChange={(e) => setSelectedMetaId(e.target.value)}
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-input px-3 py-2 text-sm"
                   >
                     <option value="">— Elige cuenta —</option>
                     {businessAccounts.map((a) => (
@@ -485,7 +485,7 @@ function ConnectAccountModal({
                   <button
                     type="button"
                     onClick={() => setUseManual(true)}
-                    className="mt-1 text-xs text-blue-600 hover:underline"
+                    className="mt-1 text-xs text-primary hover:underline"
                   >
                     Pegar ID manualmente
                   </button>
@@ -499,13 +499,13 @@ function ConnectAccountModal({
                     placeholder="act_1234567890"
                     pattern="act_\d+"
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                    className="w-full rounded-md border border-input px-3 py-2 text-sm font-mono"
                   />
                   {businessAccounts.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setUseManual(false)}
-                      className="mt-1 text-xs text-blue-600 hover:underline"
+                      className="mt-1 text-xs text-primary hover:underline"
                     >
                       Elegir de la lista
                     </button>
@@ -515,13 +515,13 @@ function ConnectAccountModal({
             </div>
 
             {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}
 
             {warnings.length > 0 && (
-              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+              <div className="rounded-md border border-warning/30 bg-warning/15 p-3 text-sm text-yellow-800">
                 <p className="font-medium">⚠️ Cuenta registrada con advertencias:</p>
                 <ul className="mt-1 list-disc pl-5">
                   {warnings.map((w) => (
@@ -541,14 +541,14 @@ function ConnectAccountModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-input bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Conectar

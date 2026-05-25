@@ -81,42 +81,42 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Settings className="h-6 w-6" />
           Configuración
         </h1>
-        <p className="mt-1 text-gray-600">Ajusta los datos de tu organización.</p>
+        <p className="mt-1 text-muted-foreground">Ajusta los datos de tu organización.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6">
+      <form onSubmit={handleSave} className="space-y-6 rounded-lg border border-border bg-card p-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Nombre</label>
+          <label className="block text-sm font-medium text-foreground">Nombre</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="mt-1 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2 focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Slug (URL)</label>
+          <label className="block text-sm font-medium text-foreground">Slug (URL)</label>
           <input
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
             required
-            className="mt-1 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2 focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Zona horaria</label>
+          <label className="block text-sm font-medium text-foreground">Zona horaria</label>
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2"
+            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>{tz.replace('America/', '')}</option>
@@ -125,11 +125,11 @@ export default function SettingsPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Idioma</label>
+          <label className="block text-sm font-medium text-foreground">Idioma</label>
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-gray-300 px-4 py-2"
+            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2"
           >
             {LOCALES.map((l) => (
               <option key={l.value} value={l.value}>{l.label}</option>
@@ -137,13 +137,13 @@ export default function SettingsPage() {
           </select>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {saved && <p className="text-sm text-green-600">Cambios guardados correctamente.</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {saved && <p className="text-sm text-success">Cambios guardados correctamente.</p>}
 
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
           {loading ? 'Guardando...' : 'Guardar cambios'}

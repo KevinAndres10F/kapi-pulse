@@ -31,7 +31,7 @@ export function CopyEditor({
   const [activeIdx, setActiveIdx] = useState(0)
 
   if (variants.length === 0) {
-    return <p className="text-sm text-gray-500">No hay copy generado todavía.</p>
+    return <p className="text-sm text-muted-foreground">No hay copy generado todavía.</p>
   }
 
   const active = variants[activeIdx]
@@ -56,7 +56,7 @@ export function CopyEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 border-b border-gray-200">
+      <div className="flex flex-wrap gap-1 border-b border-border">
         {variants.map((v, idx) => (
           <button
             key={idx}
@@ -64,8 +64,8 @@ export function CopyEditor({
             onClick={() => setActiveIdx(idx)}
             className={`px-3 py-2 text-sm font-medium ${
               idx === activeIdx
-                ? 'border-b-2 border-blue-600 text-blue-700'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-blue-600 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {v.platform}
@@ -78,11 +78,11 @@ export function CopyEditor({
           value={active.content}
           onChange={(e) => updateActive({ content: e.target.value })}
           rows={6}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-input px-3 py-2 text-sm"
         />
         <p
           className={`mt-1 text-xs ${
-            active.content.length > limit ? 'text-red-600' : 'text-gray-500'
+            active.content.length > limit ? 'text-destructive' : 'text-muted-foreground'
           }`}
         >
           {active.content.length} / {limit}
@@ -91,28 +91,28 @@ export function CopyEditor({
 
       {active.cta && (
         <div>
-          <label className="mb-1 block text-xs font-semibold text-gray-700">CTA</label>
+          <label className="mb-1 block text-xs font-semibold text-foreground">CTA</label>
           <input
             value={active.cta}
             onChange={(e) => updateActive({ cta: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           />
         </div>
       )}
 
       <div>
-        <label className="mb-1 block text-xs font-semibold text-gray-700">Hashtags</label>
+        <label className="mb-1 block text-xs font-semibold text-foreground">Hashtags</label>
         <div className="mb-2 flex flex-wrap gap-1">
           {active.hashtags.map((h) => (
             <span
               key={h}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700"
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs text-primary"
             >
               #{h}
               <button
                 type="button"
                 onClick={() => removeHashtag(h)}
-                className="text-blue-500 hover:text-blue-700"
+                className="text-blue-500 hover:text-primary"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -128,12 +128,12 @@ export function CopyEditor({
               ;(e.target as HTMLInputElement).value = ''
             }
           }}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs"
+          className="w-full rounded-lg border border-input px-3 py-2 text-xs"
         />
       </div>
 
       {active.rationale && (
-        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs italic text-gray-600">
+        <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
           {active.rationale}
         </p>
       )}

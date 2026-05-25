@@ -314,7 +314,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
         <input
           value={campaignName}
           onChange={(e) => setCampaignName(e.target.value)}
-          className="w-full max-w-xl border-b-2 border-transparent bg-transparent text-2xl font-bold text-gray-900 outline-none focus:border-blue-600"
+          className="w-full max-w-xl border-b-2 border-transparent bg-transparent text-2xl font-bold text-foreground outline-none focus:border-blue-600"
         />
         <div className="mt-4">
           <StepperProgress steps={steps} onStepClick={(n) => setStep(n as WizardStep)} />
@@ -322,14 +322,14 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
       {/* Step 1 — Brief */}
       {step === 1 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">1. Brief del producto</h2>
           <BriefForm orgId={orgId} initialBrief={brief || undefined} onSubmit={handleBriefSubmit} submitLabel="Crear campaña" />
         </section>
@@ -337,16 +337,16 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
 
       {/* Step 2 — Imágenes */}
       {step === 2 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-2 text-lg font-semibold">2. Imágenes de producto</h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-muted-foreground">
             Generamos 4 variantes con Flux. Seleccioná las que más te gustan.
           </p>
 
           <button
             onClick={handleGenerateImages}
             disabled={imageJob.state === 'queued' || imageJob.state === 'running'}
-            className="mb-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="mb-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
           >
             {(imageJob.state === 'queued' || imageJob.state === 'running') && <Loader2 className="h-4 w-4 animate-spin" />}
             {imageJob.state === 'idle' || imageJob.state === 'failed' ? 'Generar imágenes (32 créditos)' : 'Generando...'}
@@ -370,13 +370,13 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           )}
 
           <div className="mt-6 flex items-center justify-between">
-            <button onClick={() => setStep(1)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={() => setStep(1)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
             <button
               onClick={continueToVideoStep}
               disabled={selectedImageIds.size === 0}
-              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
             >
               Continuar a video <ChevronRight className="h-4 w-4" />
             </button>
@@ -386,9 +386,9 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
 
       {/* Step 3 — Video */}
       {step === 3 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-2 text-lg font-semibold">3. Animar imágenes</h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-muted-foreground">
             Convertimos imágenes seleccionadas en videos de 5s con Kling AI (80 créditos por video).
           </p>
 
@@ -396,11 +396,11 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
             {Array.from(selectedImageIds).map((assetId) => {
               const jobInfo = videoJobs.find((v) => v.sourceAssetId === assetId)
               return (
-                <div key={assetId} className="rounded-xl border border-gray-200 p-3">
+                <div key={assetId} className="rounded-xl border border-border p-3">
                   {!jobInfo ? (
                     <button
                       onClick={() => handleAnimate(assetId)}
-                      className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90"
                     >
                       Animar este (80 créditos)
                     </button>
@@ -413,12 +413,12 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           </div>
 
           <div className="mt-6 flex items-center justify-between">
-            <button onClick={() => setStep(2)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={() => setStep(2)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
             <button
               onClick={continueToAvatarStep}
-              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
             >
               Continuar <ChevronRight className="h-4 w-4" />
             </button>
@@ -428,9 +428,9 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
 
       {/* Step 4 — Avatar UGC */}
       {step === 4 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-2 text-lg font-semibold">4. UGC con avatar IA (opcional)</h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-muted-foreground">
             Genera un video vertical de una persona hablando del producto. Requiere configurar HeyGen
             o Hedra en el backend (120 créditos).
           </p>
@@ -461,20 +461,20 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
               />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Script (lo que dice el avatar)</label>
+                <label className="mb-1 block text-sm font-medium text-foreground">Script (lo que dice el avatar)</label>
                 <textarea
                   value={script}
                   onChange={(e) => setScript(e.target.value)}
                   rows={4}
                   placeholder={brief ? `Hablale a ${brief.audience || 'tu audiencia'} sobre ${brief.product}` : ''}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-input px-3 py-2 text-sm"
                 />
               </div>
 
               <button
                 onClick={handleGenerateAvatar}
                 disabled={avatarJob.state === 'queued' || avatarJob.state === 'running'}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
               >
                 {(avatarJob.state === 'queued' || avatarJob.state === 'running') && <Loader2 className="h-4 w-4 animate-spin" />}
                 Generar avatar (120 créditos)
@@ -492,25 +492,25 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           )}
 
           <div className="mt-6 flex items-center justify-between">
-            <button onClick={() => setStep(3)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={() => setStep(3)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
             <div className="flex gap-2">
               {capabilities?.avatar === false ? (
                 <button
                   onClick={skipAvatar}
-                  className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
                 >
                   Saltar y continuar <ChevronRight className="h-4 w-4" />
                 </button>
               ) : (
                 <>
-                  <button onClick={skipAvatar} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">
+                  <button onClick={skipAvatar} className="rounded-lg border border-input px-4 py-2 text-sm">
                     Saltar
                   </button>
                   <button
                     onClick={continueAfterAvatar}
-                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
                   >
                     Continuar <ChevronRight className="h-4 w-4" />
                   </button>
@@ -523,12 +523,12 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
 
       {/* Step 5 — Copy */}
       {step === 5 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-2 text-lg font-semibold">5. Copy y hashtags</h2>
-          <p className="mb-4 text-sm text-gray-500">Claude genera copy adaptado a cada red (2 créditos por bundle).</p>
+          <p className="mb-4 text-sm text-muted-foreground">Claude genera copy adaptado a cada red (2 créditos por bundle).</p>
 
           <div className="mb-4">
-            <label className="mb-1 block text-xs font-semibold text-gray-700">Plataformas</label>
+            <label className="mb-1 block text-xs font-semibold text-foreground">Plataformas</label>
             <div className="flex flex-wrap gap-2">
               {['instagram', 'facebook', 'linkedin', 'x', 'tiktok', 'threads'].map((p) => (
                 <button
@@ -538,7 +538,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
                     setCopyPlatforms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
                   }
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    copyPlatforms.includes(p) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+                    copyPlatforms.includes(p) ? 'bg-primary text-white' : 'bg-muted text-foreground'
                   }`}
                 >
                   {p}
@@ -550,7 +550,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           <button
             onClick={handleGenerateCopy}
             disabled={copyJob.state === 'queued' || copyJob.state === 'running' || copyPlatforms.length === 0}
-            className="mb-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="mb-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
           >
             {(copyJob.state === 'queued' || copyJob.state === 'running') && <Loader2 className="h-4 w-4 animate-spin" />}
             Generar copy
@@ -559,13 +559,13 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           {copyVariants.length > 0 && <CopyEditor variants={copyVariants} onChange={setCopyVariants} />}
 
           <div className="mt-6 flex items-center justify-between">
-            <button onClick={() => setStep(4)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={() => setStep(4)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
             <button
               onClick={continueToPublish}
               disabled={copyVariants.length === 0}
-              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
             >
               Continuar <ChevronRight className="h-4 w-4" />
             </button>
@@ -575,12 +575,12 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
 
       {/* Step 6 — Publicar */}
       {step === 6 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">6. Publicar o descargar</h2>
 
           <div className="space-y-6">
             <div>
-              <h3 className="mb-2 text-sm font-semibold text-gray-700">Cuentas destino (Instagram / Facebook)</h3>
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Cuentas destino (Instagram / Facebook)</h3>
               <AccountPicker
                 orgId={orgId}
                 selectedIds={selectedAccountIds}
@@ -593,7 +593,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
               <button
                 onClick={() => handlePublish()}
                 disabled={publishing || selectedAccountIds.size === 0}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
               >
                 {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Publicar ahora
@@ -602,7 +602,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
               <button
                 onClick={handlePackage}
                 disabled={packaging}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted/40 disabled:opacity-50"
               >
                 {packaging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 Descargar paquete
@@ -617,7 +617,7 @@ export function WizardClient({ orgId, orgSlug }: { orgId: string; orgSlug: strin
           </div>
 
           <div className="mt-6 flex items-center justify-between">
-            <button onClick={() => setStep(5)} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <button onClick={() => setStep(5)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ChevronLeft className="h-4 w-4" /> Volver
             </button>
           </div>

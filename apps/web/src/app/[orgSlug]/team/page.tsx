@@ -103,13 +103,13 @@ export default function TeamPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Equipo</h1>
-        <p className="mt-1 text-gray-600">Administra los miembros de tu organización.</p>
+        <h1 className="text-2xl font-bold text-foreground">Equipo</h1>
+        <p className="mt-1 text-muted-foreground">Administra los miembros de tu organización.</p>
       </div>
 
       {/* Formulario de invitación */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+      <div className="rounded-lg border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <UserPlus className="h-5 w-5" />
           Invitar miembro
         </h2>
@@ -120,13 +120,13 @@ export default function TeamPage() {
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="email@ejemplo.com"
             required
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="flex-1 rounded-lg border border-input px-4 py-2 focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
           />
           <div className="flex gap-3">
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 sm:flex-initial"
+              className="flex-1 rounded-lg border border-input px-3 py-2 sm:flex-initial"
             >
               <option value="admin">Admin</option>
               <option value="editor">Editor</option>
@@ -135,38 +135,38 @@ export default function TeamPage() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-lg bg-primary px-4 py-2 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
             >
               Invitar
             </button>
           </div>
         </form>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
+        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+        {success && <p className="mt-2 text-sm text-success">{success}</p>}
       </div>
 
       {/* Miembros actuales */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-900">Miembros ({members.length})</h2>
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border p-4">
+          <h2 className="text-lg font-semibold text-foreground">Miembros ({members.length})</h2>
         </div>
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-border">
           {members.map((member) => (
             <li key={member.user_id} className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground">
                   {(member.profiles?.full_name || '?').charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{member.profiles?.full_name || 'Sin nombre'}</p>
-                  <p className="text-sm text-gray-500">Desde {new Date(member.joined_at).toLocaleDateString('es')}</p>
+                  <p className="font-medium text-foreground">{member.profiles?.full_name || 'Sin nombre'}</p>
+                  <p className="text-sm text-muted-foreground">Desde {new Date(member.joined_at).toLocaleDateString('es')}</p>
                 </div>
               </div>
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${
                 member.role === 'owner' ? 'bg-purple-100 text-purple-700' :
-                member.role === 'admin' ? 'bg-blue-100 text-blue-700' :
-                member.role === 'editor' ? 'bg-green-100 text-green-700' :
-                'bg-gray-100 text-gray-700'
+                member.role === 'admin' ? 'bg-blue-100 text-primary' :
+                member.role === 'editor' ? 'bg-green-100 text-success' :
+                'bg-muted text-foreground'
               }`}>
                 {member.role}
               </span>
@@ -177,25 +177,25 @@ export default function TeamPage() {
 
       {/* Invitaciones pendientes */}
       {invitations.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 p-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card">
+          <div className="border-b border-border p-4">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Mail className="h-5 w-5" />
               Invitaciones pendientes ({invitations.length})
             </h2>
           </div>
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-border">
             {invitations.map((inv) => (
               <li key={inv.id} className="flex items-center justify-between p-4">
                 <div>
-                  <p className="font-medium text-gray-900">{inv.email}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-foreground">{inv.email}</p>
+                  <p className="text-sm text-muted-foreground">
                     Rol: {inv.role} · Expira: {new Date(inv.expires_at).toLocaleDateString('es')}
                   </p>
                 </div>
                 <button
                   onClick={() => handleDeleteInvitation(inv.id)}
-                  className="rounded p-2 text-red-500 hover:bg-red-50"
+                  className="rounded p-2 text-red-500 hover:bg-destructive/10"
                   title="Cancelar invitación"
                 >
                   <Trash2 className="h-4 w-4" />

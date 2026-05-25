@@ -33,7 +33,7 @@ export function CreditBadge({ orgId, balance: initialBalance }: { orgId: string;
     <div
       className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium ${
         isLow
-          ? 'border-red-200 bg-red-50 text-red-700'
+          ? 'border-destructive/30 bg-destructive/10 text-destructive'
           : 'border-amber-200 bg-amber-50 text-amber-800'
       }`}
       title={data?.plan ? `Plan ${data.plan.name} · ${monthly}/mes` : undefined}

@@ -185,7 +185,7 @@ export default function AdsInsightsPage() {
 
   if (!userId || !orgId || loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Cargando...
       </div>
@@ -197,34 +197,34 @@ export default function AdsInsightsPage() {
       <div>
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <BarChart3 className="h-6 w-6 text-blue-600" />
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-foreground">
+          <BarChart3 className="h-6 w-6 text-primary" />
           Insights de campañas
         </h1>
-        <p className="mt-1 text-gray-600">
+        <p className="mt-1 text-muted-foreground">
           Datos sincronizados desde Meta cada 6h. Para datos en tiempo real,
           consulta directamente Ads Manager.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {/* Toggle Cached / Live */}
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
-        <div className="flex rounded-md border border-gray-300 p-0.5">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex rounded-md border border-input p-0.5">
           <button
             onClick={() => setMode('cached')}
             className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm ${
-              mode === 'cached' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+              mode === 'cached' ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             <Database className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ export default function AdsInsightsPage() {
           <button
             onClick={() => setMode('live')}
             className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm ${
-              mode === 'live' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+              mode === 'live' ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             <Zap className="h-3.5 w-3.5" />
@@ -245,7 +245,7 @@ export default function AdsInsightsPage() {
             <select
               value={liveCampaignId}
               onChange={(e) => setLiveCampaignId(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="rounded-md border border-input px-3 py-1.5 text-sm"
             >
               <option value="">— Elige campaña —</option>
               {campaigns
@@ -260,13 +260,13 @@ export default function AdsInsightsPage() {
               <button
                 onClick={loadLive}
                 disabled={liveLoading}
-                className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md border border-input bg-card px-3 py-1.5 text-sm text-foreground hover:bg-muted/40 disabled:opacity-50"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${liveLoading ? 'animate-spin' : ''}`} />
                 Refrescar
               </button>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Llama directo a Meta. Cuenta hacia tus rate limits.
             </p>
           </>
@@ -275,32 +275,32 @@ export default function AdsInsightsPage() {
 
       {/* Live mode data */}
       {mode === 'live' && (
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+        <div className="rounded-lg border border-border bg-card">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="flex items-center gap-2 font-semibold text-foreground">
               <Zap className="h-4 w-4 text-yellow-500" />
               Datos en vivo
             </h2>
           </div>
           {liveError && (
-            <div className="border-b border-red-100 bg-red-50 px-6 py-3 text-sm text-red-700">
+            <div className="border-b border-red-100 bg-destructive/10 px-6 py-3 text-sm text-destructive">
               {liveError}
             </div>
           )}
           {!liveCampaignId && (
-            <div className="px-6 py-10 text-center text-sm text-gray-500">
+            <div className="px-6 py-10 text-center text-sm text-muted-foreground">
               Elige una campaña para consultar Meta en tiempo real.
             </div>
           )}
           {liveLoading && (
-            <div className="flex items-center gap-2 px-6 py-10 text-gray-500">
+            <div className="flex items-center gap-2 px-6 py-10 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Consultando Meta...
             </div>
           )}
           {!liveLoading && liveData.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-6 py-3">Fecha</th>
                     <th className="px-6 py-3 text-right">Gasto</th>
@@ -310,7 +310,7 @@ export default function AdsInsightsPage() {
                     <th className="px-6 py-3 text-right">CPC</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {liveData.map((row, idx) => (
                     <tr key={idx}>
                       <td className="px-6 py-3 font-mono text-xs">
@@ -336,7 +336,7 @@ export default function AdsInsightsPage() {
             </div>
           )}
           {!liveLoading && liveCampaignId && liveData.length === 0 && !liveError && (
-            <div className="px-6 py-10 text-center text-sm text-gray-500">
+            <div className="px-6 py-10 text-center text-sm text-muted-foreground">
               Sin datos para esta campaña en los últimos 7 días.
             </div>
           )}
@@ -344,10 +344,10 @@ export default function AdsInsightsPage() {
       )}
 
       {mode === 'cached' && (insights.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white py-16 text-center">
+        <div className="rounded-lg border border-dashed border-input bg-card py-16 text-center">
           <TrendingUp className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 text-gray-700">No hay datos de insights todavía</p>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-3 text-foreground">No hay datos de insights todavía</p>
+          <p className="mt-1 text-sm text-muted-foreground">
             Una vez que lances una campaña en ACTIVE y empiece a gastar, los datos aparecen
             aquí en la siguiente sincronización (hasta 6h).
           </p>
@@ -360,7 +360,7 @@ export default function AdsInsightsPage() {
               icon={DollarSign}
               label="Gasto total"
               value={formatMoney(totals.spend)}
-              color="text-blue-600"
+              color="text-primary"
             />
             <Kpi
               icon={Eye}
@@ -372,7 +372,7 @@ export default function AdsInsightsPage() {
               icon={MousePointerClick}
               label="Clicks"
               value={totals.clicks.toLocaleString()}
-              color="text-green-600"
+              color="text-success"
             />
             <Kpi
               icon={TrendingUp}
@@ -384,8 +384,8 @@ export default function AdsInsightsPage() {
 
           {/* Gráfico de spend */}
           {spendByDay.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <h2 className="mb-4 font-semibold text-gray-900">Gasto diario</h2>
+            <div className="rounded-lg border border-border bg-card p-6">
+              <h2 className="mb-4 font-semibold text-foreground">Gasto diario</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={spendByDay}>
@@ -417,13 +417,13 @@ export default function AdsInsightsPage() {
           )}
 
           {/* Tabla por campaña */}
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="font-semibold text-gray-900">Por campaña</h2>
+          <div className="rounded-lg border border-border bg-card">
+            <div className="border-b border-border px-6 py-4">
+              <h2 className="font-semibold text-foreground">Por campaña</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-6 py-3">Campaña</th>
                     <th className="px-6 py-3 text-right">Gasto</th>
@@ -432,10 +432,10 @@ export default function AdsInsightsPage() {
                     <th className="px-6 py-3 text-right">CTR</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {byCampaign.map((row) => (
                     <tr key={row.id}>
-                      <td className="px-6 py-3 font-medium text-gray-900">{row.name}</td>
+                      <td className="px-6 py-3 font-medium text-foreground">{row.name}</td>
                       <td className="px-6 py-3 text-right">{formatMoney(row.spend)}</td>
                       <td className="px-6 py-3 text-right">{row.impressions.toLocaleString()}</td>
                       <td className="px-6 py-3 text-right">{row.clicks.toLocaleString()}</td>
@@ -464,12 +464,12 @@ function Kpi({
   color: string
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2">
         <Icon className={`h-4 w-4 ${color}`} />
-        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
       </div>
-      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
     </div>
   )
 }

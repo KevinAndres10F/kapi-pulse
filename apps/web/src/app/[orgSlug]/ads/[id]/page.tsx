@@ -215,7 +215,7 @@ export default function AdCampaignDetailPage() {
 
   if (!userId || !orgId || loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Cargando...
       </div>
@@ -227,12 +227,12 @@ export default function AdCampaignDetailPage() {
       <div className="space-y-3">
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Link>
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           {error || 'No encontrada'}
         </div>
       </div>
@@ -258,7 +258,7 @@ export default function AdCampaignDetailPage() {
       label: 'Enviar a aprobación',
       icon: Send,
       onClick: handleSubmit,
-      style: 'bg-blue-600 hover:bg-blue-700 text-white',
+      style: 'bg-primary hover:bg-primary/90 text-white',
       show: campaign.status === 'draft',
     },
     {
@@ -266,7 +266,7 @@ export default function AdCampaignDetailPage() {
       label: 'Eliminar',
       icon: Trash2,
       onClick: handleDelete,
-      style: 'border border-red-300 bg-white text-red-700 hover:bg-red-50',
+      style: 'border border-destructive/30 bg-card text-destructive hover:bg-destructive/10',
       show: campaign.status === 'draft' || campaign.status === 'rejected' || (isAdmin && campaign.status !== 'active'),
     },
     {
@@ -274,7 +274,7 @@ export default function AdCampaignDetailPage() {
       label: 'Rechazar',
       icon: XCircle,
       onClick: handleReject,
-      style: 'border border-red-300 bg-white text-red-700 hover:bg-red-50',
+      style: 'border border-destructive/30 bg-card text-destructive hover:bg-destructive/10',
       show: isAdmin && campaign.status === 'pending_approval',
     },
     {
@@ -282,7 +282,7 @@ export default function AdCampaignDetailPage() {
       label: 'Aprobar (PAUSED)',
       icon: CheckCircle2,
       onClick: handleApprove,
-      style: 'bg-blue-600 hover:bg-blue-700 text-white',
+      style: 'bg-primary hover:bg-primary/90 text-white',
       show: isAdmin && campaign.status === 'pending_approval',
     },
     {
@@ -310,22 +310,22 @@ export default function AdCampaignDetailPage() {
       <div>
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-              <Megaphone className="h-6 w-6 text-blue-600" />
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+              <Megaphone className="h-6 w-6 text-primary" />
               <span className="truncate">{campaign.name}</span>
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.color}`}>
                 {st.label}
               </span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 {objectiveLabel(campaign.objective)}
               </span>
               {campaign.meta_campaign_id && (
@@ -333,7 +333,7 @@ export default function AdCampaignDetailPage() {
                   href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${campaign.meta_campaign_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   Ver en Meta Ads Manager <ExternalLink className="h-3 w-3" />
                 </a>
@@ -361,7 +361,7 @@ export default function AdCampaignDetailPage() {
           )}
         </div>
         {campaign.rejection_reason && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             <strong>Razón del rechazo:</strong> {campaign.rejection_reason}
           </div>
         )}
@@ -429,7 +429,7 @@ export default function AdCampaignDetailPage() {
                       href={creative.link_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {creative.link_url}
                     </a>
@@ -482,7 +482,7 @@ export default function AdCampaignDetailPage() {
           </Section>
 
           {campaign.status === 'draft' && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            <div className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-blue-800">
               <ImageIcon className="mb-1 inline h-4 w-4" />{' '}
               <strong>Borrador.</strong> Cuando estés listo, envía a aprobación.
               El equipo KAPI lo revisa y lo lanza en Meta.
@@ -504,9 +504,9 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <h2 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
-        {Icon && <Icon className="h-4 w-4 text-gray-500" />}
+    <div className="rounded-lg border border-border bg-card p-5">
+      <h2 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         {title}
       </h2>
       <div className="space-y-2">{children}</div>
@@ -527,8 +527,8 @@ function Row({
 }) {
   return (
     <div className={multiline ? '' : 'flex justify-between gap-2 text-sm'}>
-      <span className="text-gray-500">{label}</span>
-      <span className={`${mono ? 'font-mono text-xs' : ''} ${multiline ? 'mt-1 block whitespace-pre-wrap' : 'text-right text-gray-900'}`}>
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`${mono ? 'font-mono text-xs' : ''} ${multiline ? 'mt-1 block whitespace-pre-wrap' : 'text-right text-foreground'}`}>
         {value}
       </span>
     </div>
@@ -537,9 +537,9 @@ function Row({
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-gray-50 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-gray-900">{value}</p>
+    <div className="rounded-md bg-muted/40 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-bold text-foreground">{value}</p>
     </div>
   )
 }

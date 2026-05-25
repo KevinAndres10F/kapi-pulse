@@ -29,7 +29,7 @@ export default async function CampaignDetailPage({ params }: Props) {
     <div className="space-y-6">
       <Link
         href={`/${orgSlug}/studio`}
-        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Volver a Studio
       </Link>

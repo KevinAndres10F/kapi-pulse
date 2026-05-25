@@ -230,7 +230,7 @@ export default function NewAdPage() {
 
   if (!userId || !orgId || loadingMeta) {
     return (
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Cargando...
       </div>
@@ -242,16 +242,16 @@ export default function NewAdPage() {
       <div>
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Megaphone className="h-6 w-6 text-blue-600" />
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-foreground">
+          <Megaphone className="h-6 w-6 text-primary" />
           Nueva campaña
         </h1>
-        <p className="mt-1 text-gray-600">
+        <p className="mt-1 text-muted-foreground">
           Esto crea un borrador. El equipo KAPI lo revisa antes de lanzarlo en Meta.
         </p>
       </div>
@@ -287,16 +287,16 @@ export default function NewAdPage() {
               ))}
             </select>
             {accounts.length === 0 && (
-              <p className="mt-1 text-xs text-yellow-700">
+              <p className="mt-1 text-xs text-warning-foreground">
                 No tienes cuentas. Contacta al equipo KAPI.
               </p>
             )}
           </Field>
 
           {fundingWarning && (
-            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3">
+            <div className="rounded-md border border-warning/30 bg-warning/15 p-3">
               <div className="flex gap-2">
-                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-yellow-600" />
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning-foreground" />
                 <p className="text-sm text-yellow-800">{fundingWarning}</p>
               </div>
             </div>
@@ -309,8 +309,8 @@ export default function NewAdPage() {
                   key={o.value}
                   className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${
                     objective === o.value
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-ring bg-primary/10'
+                      : 'border-border hover:border-input'
                   }`}
                 >
                   <input
@@ -322,8 +322,8 @@ export default function NewAdPage() {
                     className="mt-1"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{o.label}</p>
-                    <p className="text-xs text-gray-500">{o.help}</p>
+                    <p className="text-sm font-medium text-foreground">{o.label}</p>
+                    <p className="text-xs text-muted-foreground">{o.help}</p>
                   </div>
                 </label>
               ))}
@@ -332,7 +332,7 @@ export default function NewAdPage() {
 
           <Field label="Presupuesto diario (USD)" required>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500">$</span>
+              <span className="text-muted-foreground">$</span>
               <input
                 type="number"
                 step="0.50"
@@ -342,7 +342,7 @@ export default function NewAdPage() {
                 required
                 className="input w-32"
               />
-              <span className="text-sm text-gray-500">por día</span>
+              <span className="text-sm text-muted-foreground">por día</span>
             </div>
           </Field>
         </Section>
@@ -358,8 +358,8 @@ export default function NewAdPage() {
                   onClick={() => toggleCountry(c.code)}
                   className={`rounded-full border px-3 py-1 text-xs ${
                     countries.includes(c.code)
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ? 'border-ring bg-blue-100 text-primary'
+                      : 'border-input bg-card text-foreground hover:bg-muted/40'
                   }`}
                 >
                   {c.name}
@@ -405,8 +405,8 @@ export default function NewAdPage() {
                   onClick={() => togglePlatform(p.v)}
                   className={`rounded-full border px-3 py-1 text-xs ${
                     platforms.includes(p.v)
-                      ? 'border-blue-500 bg-blue-100 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ? 'border-ring bg-blue-100 text-primary'
+                      : 'border-input bg-card text-foreground hover:bg-muted/40'
                   }`}
                 >
                   {p.l}
@@ -443,7 +443,7 @@ export default function NewAdPage() {
                 className="input"
               />
             )}
-            {pagesError && <p className="mt-1 text-xs text-yellow-700">{pagesError}</p>}
+            {pagesError && <p className="mt-1 text-xs text-warning-foreground">{pagesError}</p>}
           </Field>
 
           <Field label="Titular (headline)">
@@ -497,14 +497,14 @@ export default function NewAdPage() {
               placeholder="https://..."
               className="input"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Pega una URL pública. Más adelante podrás vincular un asset de Studio.
             </p>
           </Field>
         </Section>
 
         {submitError && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             {submitError}
           </div>
         )}
@@ -512,14 +512,14 @@ export default function NewAdPage() {
         <div className="flex justify-end gap-2">
           <Link
             href={`/${params.orgSlug}/ads`}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-input bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
           >
             Cancelar
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             Guardar borrador
@@ -547,8 +547,8 @@ export default function NewAdPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <h2 className="mb-4 font-semibold text-gray-900">{title}</h2>
+    <div className="rounded-lg border border-border bg-card p-6">
+      <h2 className="mb-4 font-semibold text-foreground">{title}</h2>
       <div className="space-y-4">{children}</div>
     </div>
   )
@@ -565,7 +565,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">
+      <label className="mb-1 block text-sm font-medium text-foreground">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>

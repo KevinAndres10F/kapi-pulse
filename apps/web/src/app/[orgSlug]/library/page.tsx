@@ -18,11 +18,11 @@ export default async function LibraryPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Folder className="h-6 w-6 text-blue-600" />
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+          <Folder className="h-6 w-6 text-primary" />
           Librería de assets
         </h1>
-        <p className="mt-1 text-gray-600">Todas las imágenes, videos y avatares generados por tu equipo.</p>
+        <p className="mt-1 text-muted-foreground">Todas las imágenes, videos y avatares generados por tu equipo.</p>
       </div>
 
       <LibraryClient orgId={org.id as string} />

@@ -45,7 +45,7 @@ export function AccountPicker({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Cargando cuentas...
       </div>
     )
@@ -77,22 +77,22 @@ export function AccountPicker({
               type="button"
               onClick={() => toggle(a.id)}
               className={`flex w-full items-center gap-3 rounded-lg border-2 px-3 py-2 text-left text-sm transition ${
-                selected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-400'
+                selected ? 'border-blue-600 bg-primary/10' : 'border-border hover:border-gray-400'
               }`}
             >
               {a.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.avatar_url} alt={a.display_name} className="h-8 w-8 rounded-full object-cover" />
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-600">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
                   {a.display_name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-gray-900">{a.display_name}</p>
-                <p className="text-xs text-gray-500">{a.provider}</p>
+                <p className="truncate font-medium text-foreground">{a.display_name}</p>
+                <p className="text-xs text-muted-foreground">{a.provider}</p>
               </div>
-              {selected && <span className="text-xs font-semibold text-blue-700">Seleccionada</span>}
+              {selected && <span className="text-xs font-semibold text-primary">Seleccionada</span>}
             </button>
           </li>
         )

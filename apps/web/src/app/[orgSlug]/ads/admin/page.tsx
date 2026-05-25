@@ -166,15 +166,15 @@ export default function AdsAdminPage() {
 
   if (forbidden) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-red-400" />
         <h2 className="mt-3 font-semibold text-red-900">No tienes acceso</h2>
-        <p className="mt-1 text-sm text-red-700">
+        <p className="mt-1 text-sm text-destructive">
           Esta vista es solo para owner/admin de la organización operadora (KAPI).
         </p>
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="mt-4 inline-flex items-center gap-1 text-sm text-red-600 underline"
+          className="mt-4 inline-flex items-center gap-1 text-sm text-destructive underline"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
@@ -185,7 +185,7 @@ export default function AdsAdminPage() {
 
   if (!userId || !orgId || loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         Cargando...
       </div>
@@ -197,33 +197,33 @@ export default function AdsAdminPage() {
       <div>
         <Link
           href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a mis campañas
         </Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-gray-900">
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-foreground">
           <ShieldAlert className="h-6 w-6 text-purple-600" />
           Panel admin — Aprobaciones
         </h1>
-        <p className="mt-1 text-gray-600">
+        <p className="mt-1 text-muted-foreground">
           Acciones que afectan Meta directamente. Aprobar crea en PAUSED, Lanzar pasa a ACTIVE y empieza a gastar.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
       {/* Pendientes */}
       <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
+        <h2 className="mb-3 font-semibold text-foreground">
           Pendientes de aprobación ({pending.length})
         </h2>
         {pending.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-input bg-card py-10 text-center text-sm text-muted-foreground">
             No hay campañas en cola.
           </div>
         ) : (
@@ -238,15 +238,15 @@ export default function AdsAdminPage() {
               return (
                 <li
                   key={c.id}
-                  className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
+                  className="rounded-lg border border-warning/30 bg-warning/15 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{c.name}</p>
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="font-medium text-foreground">{c.name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {objectiveLabel(c.objective)} · {budget} · cuenta {c.meta_ad_account_id}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Enviada {new Date(c.created_at).toLocaleString()}
                       </p>
                     </div>
@@ -254,7 +254,7 @@ export default function AdsAdminPage() {
                       <button
                         onClick={() => handleReject(c.id, c.name)}
                         disabled={!!action}
-                        className="flex items-center gap-1 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        className="flex items-center gap-1 rounded-md border border-destructive/30 bg-card px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
                       >
                         {isThis && action?.type === 'rejecting' ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -266,7 +266,7 @@ export default function AdsAdminPage() {
                       <button
                         onClick={() => handleApprove(c.id, c.name)}
                         disabled={!!action}
-                        className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50"
                       >
                         {isThis && action?.type === 'approving' ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -286,11 +286,11 @@ export default function AdsAdminPage() {
 
       {/* Aprobadas (listas para lanzar) */}
       <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
+        <h2 className="mb-3 font-semibold text-foreground">
           Aprobadas — listas para lanzar ({approved.length})
         </h2>
         {approved.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-6 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-input bg-card py-6 text-center text-sm text-muted-foreground">
             Ninguna campaña aprobada en esta org.
           </div>
         ) : (
@@ -314,7 +314,7 @@ export default function AdsAdminPage() {
           </ul>
         )}
         {approved.length > 0 && (
-          <p className="mt-2 flex items-center gap-1 text-xs text-yellow-700">
+          <p className="mt-2 flex items-center gap-1 text-xs text-warning-foreground">
             <AlertTriangle className="h-3 w-3" />
             Al lanzar, la campaña empieza a gastar el presupuesto diario inmediatamente.
           </p>
@@ -323,11 +323,11 @@ export default function AdsAdminPage() {
 
       {/* Activas */}
       <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
+        <h2 className="mb-3 font-semibold text-foreground">
           Activas ({active.length})
         </h2>
         {active.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-6 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-input bg-card py-6 text-center text-sm text-muted-foreground">
             Ninguna campaña activa.
           </div>
         ) : (
@@ -382,20 +382,20 @@ function CampaignRow({
     green: 'bg-green-600 hover:bg-green-700 text-white',
     orange: 'bg-orange-500 hover:bg-orange-600 text-white',
     red: 'bg-red-600 hover:bg-red-700 text-white',
-    blue: 'bg-blue-600 hover:bg-blue-700 text-white',
+    blue: 'bg-primary hover:bg-primary/90 text-white',
   } as const
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4">
+    <li className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900">{campaign.name}</p>
+            <p className="font-medium text-foreground">{campaign.name}</p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.color}`}>
               {st.label}
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {objectiveLabel(campaign.objective)} · {budget}
             {campaign.meta_campaign_id && (
               <>
@@ -404,7 +404,7 @@ function CampaignRow({
                   href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${campaign.meta_campaign_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 text-blue-600 hover:underline"
+                  className="inline-flex items-center gap-0.5 text-primary hover:underline"
                 >
                   Meta <ExternalLink className="h-3 w-3" />
                 </a>

@@ -42,11 +42,11 @@ export default async function CreditsPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
           <Coins className="h-6 w-6 text-amber-500" />
           Créditos
         </h1>
-        <p className="mt-1 text-gray-600">Balance, historial y precios por operación.</p>
+        <p className="mt-1 text-muted-foreground">Balance, historial y precios por operación.</p>
       </div>
 
       <CreditsClient

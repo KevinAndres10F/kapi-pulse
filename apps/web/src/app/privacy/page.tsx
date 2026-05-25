@@ -4,9 +4,9 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-gray-800">
-      <h1 className="text-3xl font-bold text-gray-900">Política de Privacidad</h1>
-      <p className="mt-2 text-sm text-gray-500">
+    <main className="mx-auto max-w-2xl px-6 py-16 text-foreground">
+      <h1 className="text-3xl font-bold text-foreground">Política de Privacidad</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
         KAPI Pulse — operado por KAPI Service Group (Ecuador) · Vigente desde 14 de mayo de 2026
       </p>
 
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
           sociales.
         </p>
 
-        <h2 className="text-xl font-semibold text-gray-900">Datos que recolectamos</h2>
+        <h2 className="text-xl font-semibold text-foreground">Datos que recolectamos</h2>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>
             <strong>Cuenta de usuario</strong>: nombre, correo electrónico, foto
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-gray-900">Cómo usamos tus datos</h2>
+        <h2 className="text-xl font-semibold text-foreground">Cómo usamos tus datos</h2>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Para autenticarte y mantener tu sesión.</li>
           <li>Para publicar contenido en tu nombre en las redes sociales que conectaste.</li>
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
           <li>Para mejorar la plataforma (estadísticas agregadas, no datos individuales).</li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-gray-900">Cómo NO usamos tus datos</h2>
+        <h2 className="text-xl font-semibold text-foreground">Cómo NO usamos tus datos</h2>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>No vendemos ni alquilamos tus datos a terceros.</li>
           <li>No publicamos contenido sin tu autorización explícita.</li>
@@ -54,14 +54,14 @@ export default function PrivacyPage() {
           <li>No usamos tus datos para entrenar modelos de IA.</li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-gray-900">Seguridad</h2>
+        <h2 className="text-xl font-semibold text-foreground">Seguridad</h2>
         <p>
           Los tokens OAuth se almacenan encriptados con AES-256-GCM. Los datos
           viajan siempre por HTTPS. Cumplimos los requisitos de la LOPDP
           (Ley Orgánica de Protección de Datos Personales del Ecuador).
         </p>
 
-        <h2 className="text-xl font-semibold text-gray-900">Tus derechos</h2>
+        <h2 className="text-xl font-semibold text-foreground">Tus derechos</h2>
         <p>Podés en cualquier momento:</p>
         <ul className="list-disc pl-6 space-y-1.5">
           <li>Acceder a una copia de tus datos.</li>
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
           <li>
             Solicitar la eliminación completa de tu cuenta y todos los datos —
             ver{' '}
-            <a href="/data-deletion" className="text-blue-600 underline">
+            <a href="/data-deletion" className="text-primary underline">
               Eliminación de datos
             </a>
             .
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           <li>Desconectar redes sociales individualmente desde la plataforma.</li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-gray-900">Compartición con terceros</h2>
+        <h2 className="text-xl font-semibold text-foreground">Compartición con terceros</h2>
         <p>
           Compartimos datos solo con los servicios estrictamente necesarios para
           operar la plataforma:
@@ -93,22 +93,22 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-gray-900">Cookies</h2>
+        <h2 className="text-xl font-semibold text-foreground">Cookies</h2>
         <p>
           Usamos cookies estrictamente necesarias para mantener tu sesión. No
           usamos cookies de tracking publicitario.
         </p>
 
-        <h2 className="text-xl font-semibold text-gray-900">Cambios a esta política</h2>
+        <h2 className="text-xl font-semibold text-foreground">Cambios a esta política</h2>
         <p>
           Si actualizamos esta política, te notificaremos por correo y dentro de
           la plataforma. Si no estás de acuerdo, podés eliminar tu cuenta.
         </p>
 
-        <h2 className="text-xl font-semibold text-gray-900">Contacto</h2>
+        <h2 className="text-xl font-semibold text-foreground">Contacto</h2>
         <p>
           Para cualquier consulta sobre privacidad:{' '}
-          <a href="mailto:privacidad@kapisg.com" className="text-blue-600 underline">
+          <a href="mailto:privacidad@kapisg.com" className="text-primary underline">
             privacidad@kapisg.com
           </a>
         </p>

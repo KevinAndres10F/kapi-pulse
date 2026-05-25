@@ -4,9 +4,9 @@ export const metadata = {
 
 export default function DataDeletionPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-gray-800">
-      <h1 className="text-3xl font-bold text-gray-900">Eliminación de tus datos</h1>
-      <p className="mt-2 text-sm text-gray-500">
+    <main className="mx-auto max-w-2xl px-6 py-16 text-foreground">
+      <h1 className="text-3xl font-bold text-foreground">Eliminación de tus datos</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
         KAPI Pulse — operado por KAPI Service Group (Ecuador)
       </p>
 
@@ -17,7 +17,7 @@ export default function DataDeletionPage() {
           plataforma. Esta página explica cómo solicitar esa eliminación.
         </p>
 
-        <h2 className="mt-8 text-xl font-semibold text-gray-900">
+        <h2 className="mt-8 text-xl font-semibold text-foreground">
           ¿Qué datos almacenamos?
         </h2>
         <ul className="list-disc pl-6 space-y-1.5">
@@ -36,14 +36,14 @@ export default function DataDeletionPage() {
           </li>
         </ul>
 
-        <h2 className="mt-8 text-xl font-semibold text-gray-900">
+        <h2 className="mt-8 text-xl font-semibold text-foreground">
           Cómo solicitar la eliminación
         </h2>
         <p>
           Tenés dos opciones para que eliminemos completamente tus datos:
         </p>
 
-        <h3 className="mt-4 font-semibold text-gray-900">
+        <h3 className="mt-4 font-semibold text-foreground">
           Opción 1 — Desde la plataforma (autoservicio)
         </h3>
         <ol className="list-decimal pl-6 space-y-1.5">
@@ -51,7 +51,7 @@ export default function DataDeletionPage() {
             Iniciá sesión en{' '}
             <a
               href="https://kapi-pulse.netlify.app"
-              className="text-blue-600 underline"
+              className="text-primary underline"
             >
               kapi-pulse.netlify.app
             </a>
@@ -64,7 +64,7 @@ export default function DataDeletionPage() {
           </li>
         </ol>
 
-        <h3 className="mt-4 font-semibold text-gray-900">
+        <h3 className="mt-4 font-semibold text-foreground">
           Opción 2 — Por correo electrónico
         </h3>
         <p>
@@ -80,7 +80,7 @@ export default function DataDeletionPage() {
           y te enviamos confirmación por correo cuando esté completa.
         </p>
 
-        <h2 className="mt-8 text-xl font-semibold text-gray-900">
+        <h2 className="mt-8 text-xl font-semibold text-foreground">
           Qué pasa con los datos en las redes sociales
         </h2>
         <p>
@@ -90,16 +90,16 @@ export default function DataDeletionPage() {
           cada red social.
         </p>
 
-        <h2 className="mt-8 text-xl font-semibold text-gray-900">Contacto</h2>
+        <h2 className="mt-8 text-xl font-semibold text-foreground">Contacto</h2>
         <p>
           Si tenés dudas, contactanos a{' '}
-          <a href="mailto:privacidad@kapisg.com" className="text-blue-600 underline">
+          <a href="mailto:privacidad@kapisg.com" className="text-primary underline">
             privacidad@kapisg.com
           </a>
           .
         </p>
 
-        <p className="mt-12 text-sm text-gray-500">
+        <p className="mt-12 text-sm text-muted-foreground">
           Última actualización: 14 de mayo de 2026
         </p>
       </section>
