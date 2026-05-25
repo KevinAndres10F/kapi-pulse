@@ -1,17 +1,43 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
+  AlertTriangle,
+  CheckCircle2,
   Link2,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Trash2,
-  CheckCircle2,
-  AlertTriangle,
   XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface SocialAccount {
   id: string
@@ -25,16 +51,16 @@ interface SocialAccount {
   connected_at: string
 }
 
-const PROVIDER_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  facebook: { label: 'Facebook', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-  instagram: { label: 'Instagram', color: 'text-pink-700', bgColor: 'bg-pink-100' },
-  threads: { label: 'Threads', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-  linkedin: { label: 'LinkedIn', color: 'text-blue-800', bgColor: 'bg-blue-50' },
-  tiktok: { label: 'TikTok', color: 'text-gray-900', bgColor: 'bg-gray-100' },
-  x: { label: 'X (Twitter)', color: 'text-gray-900', bgColor: 'bg-gray-100' },
-  youtube: { label: 'YouTube', color: 'text-red-700', bgColor: 'bg-red-100' },
-  pinterest: { label: 'Pinterest', color: 'text-red-600', bgColor: 'bg-red-50' },
-  whatsapp: { label: 'WhatsApp', color: 'text-green-700', bgColor: 'bg-green-100' },
+const PROVIDER_CONFIG: Record<string, { label: string; tint: string }> = {
+  facebook: { label: 'Facebook', tint: 'oklch(0.55 0.18 250)' },
+  instagram: { label: 'Instagram', tint: 'oklch(0.6 0.22 0)' },
+  threads: { label: 'Threads', tint: 'oklch(0.4 0 0)' },
+  linkedin: { label: 'LinkedIn', tint: 'oklch(0.48 0.15 240)' },
+  tiktok: { label: 'TikTok', tint: 'oklch(0.45 0 0)' },
+  x: { label: 'X (Twitter)', tint: 'oklch(0.2 0 0)' },
+  youtube: { label: 'YouTube', tint: 'oklch(0.55 0.22 27)' },
+  pinterest: { label: 'Pinterest', tint: 'oklch(0.55 0.22 27)' },
+  whatsapp: { label: 'WhatsApp', tint: 'oklch(0.6 0.18 145)' },
 }
 
 const AVAILABLE_PROVIDERS: Array<{
@@ -46,26 +72,27 @@ const AVAILABLE_PROVIDERS: Array<{
   {
     key: 'meta',
     label: 'Facebook',
-    description: 'Conecta Pages de Facebook. Si tu Page tiene una cuenta de Instagram Business vinculada, también se importa.',
+    description: 'Conectá Pages de Facebook. Si tu Page tiene Instagram Business vinculado, también lo importa.',
   },
   {
     key: 'instagram',
     label: 'Instagram',
-    description: 'Conecta directo con tu cuenta de Instagram Business o Creator, sin necesidad de Facebook Page.',
+    description: 'Conectá directo con tu cuenta de Instagram Business o Creator, sin Facebook Page.',
   },
-  { key: 'linkedin', label: 'LinkedIn', description: 'Publica como perfil personal' },
-  // Proveedores futuros
-  { key: 'tiktok', label: 'TikTok', description: 'Disponible pronto', disabled: true },
-  { key: 'x', label: 'X (Twitter)', description: 'Disponible pronto', disabled: true },
-  { key: 'youtube', label: 'YouTube', description: 'Disponible pronto', disabled: true },
-  { key: 'pinterest', label: 'Pinterest', description: 'Disponible pronto', disabled: true },
+  { key: 'linkedin', label: 'LinkedIn', description: 'Publicá como perfil personal.' },
+  { key: 'tiktok', label: 'TikTok', description: 'Disponible pronto.', disabled: true },
+  { key: 'x', label: 'X (Twitter)', description: 'Disponible pronto.', disabled: true },
+  { key: 'youtube', label: 'YouTube', description: 'Disponible pronto.', disabled: true },
+  { key: 'pinterest', label: 'Pinterest', description: 'Disponible pronto.', disabled: true },
 ]
 
-const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle2; label: string; className: string }> = {
-  active: { icon: CheckCircle2, label: 'Activa', className: 'text-green-600' },
-  expired: { icon: AlertTriangle, label: 'Token expirado', className: 'text-yellow-600' },
-  disconnected: { icon: XCircle, label: 'Desconectada', className: 'text-red-600' },
-  error: { icon: XCircle, label: 'Error', className: 'text-red-600' },
+type StatusKey = 'active' | 'expired' | 'disconnected' | 'error'
+
+const STATUS_CONFIG: Record<StatusKey, { icon: typeof CheckCircle2; label: string; tone: 'success' | 'warning' | 'destructive' }> = {
+  active: { icon: CheckCircle2, label: 'Activa', tone: 'success' },
+  expired: { icon: AlertTriangle, label: 'Token expirado', tone: 'warning' },
+  disconnected: { icon: XCircle, label: 'Desconectada', tone: 'destructive' },
+  error: { icon: XCircle, label: 'Error', tone: 'destructive' },
 }
 
 function errorLabelFor(
@@ -78,19 +105,17 @@ function errorLabelFor(
 
   const baseMessages: Record<string, string> = {
     access_denied: 'Rechazaste los permisos requeridos. Sin acceso a tus Pages no podemos publicar contenido en tu nombre.',
-    no_pages:
-      'Tu cuenta de Facebook no administra ninguna Page. Crea una Page de negocio o pide acceso a una existente, y reconectá.',
+    no_pages: 'Tu cuenta de Facebook no administra ninguna Page. Creá una Page de negocio o pedí acceso a una existente, y reconectá.',
     state_expired: 'La sesión de conexión expiró. Volvé a iniciar el flujo desde "Conectar red social".',
     provider_unsupported: 'Este proveedor todavía no está soportado.',
-    db_error: 'No pudimos guardar la conexión en la base de datos. Intentá de nuevo.',
-    token_exchange_failed: 'Facebook rechazó el intercambio del código de autorización. Verificá que la app de Meta esté en modo Live y que el redirect URI esté registrado.',
+    db_error: 'No pudimos guardar la conexión. Intentá de nuevo.',
+    token_exchange_failed: 'Facebook rechazó el intercambio del código de autorización. Verificá que la app de Meta esté en modo Live y el redirect URI registrado.',
     user_denied: 'Cancelaste el inicio de sesión con Facebook.',
-    config_missing: 'La configuración OAuth del backend está incompleta. Revisá las variables de entorno.',
+    config_missing: 'La configuración OAuth del backend está incompleta.',
   }
 
   const reasonOrCode = reason || code
   const base = baseMessages[reasonOrCode] || baseMessages[code] || `Error: ${code}`
-
   if (message) return `${base}\n${message}`
   if (description) return `${base}\n${decodeURIComponent(description)}`
   return base
@@ -120,7 +145,9 @@ export default function ConnectionsPage() {
   const errorLabel = errorLabelFor(errorParam, errorReasonParam, errorDescriptionParam, errorMessageParam)
 
   const loadAccounts = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
 
@@ -135,14 +162,14 @@ export default function ConnectionsPage() {
 
     const { data } = await supabase
       .from('social_accounts')
-      .select('id, provider, external_id, display_name, avatar_url, status, expires_at, metadata, connected_at')
+      .select(
+        'id, provider, external_id, display_name, avatar_url, status, expires_at, metadata, connected_at',
+      )
       .eq('organization_id', org.id)
       .order('connected_at', { ascending: false })
 
     if (data) setAccounts(data)
 
-    // Detectar admin operador (miembro owner/admin de org "kapi") — mismo
-    // patrón que usa /ads. Permite ver la sección "Asignar Page (admin)".
     const { data: memberships } = await supabase
       .from('organization_members')
       .select('role, organizations(slug)')
@@ -155,7 +182,9 @@ export default function ConnectionsPage() {
     setIsAdmin(ms.some((m) => m.organizations?.slug === 'kapi'))
   }, [supabase, orgSlug])
 
-  useEffect(() => { loadAccounts() }, [loadAccounts])
+  useEffect(() => {
+    loadAccounts()
+  }, [loadAccounts])
 
   function handleConnect(providerKey: string) {
     if (!orgId || !userId) return
@@ -163,20 +192,20 @@ export default function ConnectionsPage() {
     window.location.href = `${apiUrl}/api/connect/${providerKey}?org_id=${orgId}&user_id=${userId}`
   }
 
-  async function handleDisconnect(accountId: string) {
-    if (!confirm('¿Seguro que quieres desconectar esta cuenta?')) return
-    setLoadingDelete(accountId)
-
-    await supabase.from('social_accounts').delete().eq('id', accountId)
-    setAccounts((prev) => prev.filter((a) => a.id !== accountId))
+  async function handleDisconnect(account: SocialAccount) {
+    if (!confirm(`¿Seguro que querés desconectar ${account.display_name || account.provider}?`)) return
+    setLoadingDelete(account.id)
+    const { error } = await supabase.from('social_accounts').delete().eq('id', account.id)
+    if (error) {
+      toast.error('No se pudo desconectar.', { description: error.message })
+    } else {
+      setAccounts((prev) => prev.filter((a) => a.id !== account.id))
+      toast.success('Cuenta desconectada.')
+    }
     setLoadingDelete(null)
   }
 
-  async function handleReconnect(account: SocialAccount) {
-    // Reconectar = iniciar nuevo flujo OAuth.
-    // Distinguir: cuentas Instagram conectadas via login directo (metadata.auth_method=instagram_login)
-    // re-inician con /connect/instagram. Las cuentas Facebook (y sus IG vinculadas)
-    // re-inician con /connect/meta.
+  function handleReconnect(account: SocialAccount) {
     const authMethod = (account.metadata?.auth_method as string | undefined) || ''
     let providerKey: string
     if (account.provider === 'instagram' && authMethod === 'instagram_login') {
@@ -191,37 +220,223 @@ export default function ConnectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Link2 className="h-6 w-6" />
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            <Link2 className="size-6 text-primary" />
             Conexiones
           </h1>
-          <p className="mt-1 text-gray-600">Gestiona tus cuentas de redes sociales conectadas.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Gestioná las cuentas de redes sociales vinculadas a esta organización.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
-            <button
-              onClick={() => setShowAssignPageModal(true)}
-              className="flex items-center justify-center gap-2 rounded-lg border border-purple-300 bg-purple-50 px-4 py-2.5 font-medium text-purple-700 hover:bg-purple-100"
-              title="Asigna Pages del Business directamente, sin pasar por OAuth de usuario"
-            >
-              <Plus className="h-4 w-4" />
-              Asignar Page (admin)
-            </button>
+            <Button variant="outline" size="sm" onClick={() => setShowAssignPageModal(true)}>
+              <ShieldCheck className="size-4" />
+              Asignar Page <Badge variant="muted" className="ml-1">admin</Badge>
+            </Button>
           )}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
+          <Button variant="gradient" size="sm" onClick={() => setShowAddModal(true)}>
+            <Plus className="size-4" />
             Conectar red social
-          </button>
+          </Button>
         </div>
       </div>
 
+      {/* Mensajes de estado */}
+      {successParam && (
+        <Alert variant="success">
+          <CheckCircle2 className="size-4" />
+          <AlertTitle>
+            {providerParam === 'meta' || providerParam === 'facebook'
+              ? 'Facebook conectado'
+              : providerParam === 'instagram'
+                ? 'Instagram conectado'
+                : 'Cuenta conectada'}
+          </AlertTitle>
+          {(providerParam === 'meta' || providerParam === 'facebook') && pagesParam && (
+            <AlertDescription>
+              {pagesParam} Page(s) de Facebook
+              {instagramParam && Number(instagramParam) > 0
+                ? ` y ${instagramParam} cuenta(s) de Instagram Business`
+                : ''}{' '}
+              vinculadas.
+            </AlertDescription>
+          )}
+        </Alert>
+      )}
+
+      {errorParam && (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>
+            No se pudo conectar
+            {providerParam ? ` con ${PROVIDER_CONFIG[providerParam]?.label || providerParam}` : ''}
+          </AlertTitle>
+          <AlertDescription className="whitespace-pre-line">{errorLabel}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Lista de cuentas */}
+      {accounts.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <span className="flex size-14 items-center justify-center rounded-full bg-primary/10">
+              <Link2 className="size-6 text-primary" />
+            </span>
+            <div>
+              <p className="text-base font-medium text-foreground">Sin cuentas conectadas</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Conectá tu primera red social para empezar a publicar.
+              </p>
+            </div>
+            <Button onClick={() => setShowAddModal(true)} variant="gradient">
+              <Plus className="size-4" />
+              Conectar ahora
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {accounts.map((account) => {
+            const config = PROVIDER_CONFIG[account.provider] || {
+              label: account.provider,
+              tint: 'oklch(0.5 0 0)',
+            }
+            const statusKey = (STATUS_CONFIG[account.status as StatusKey] ? account.status : 'error') as StatusKey
+            const statusCfg = STATUS_CONFIG[statusKey]
+            const StatusIcon = statusCfg.icon
+            const statusToneClass =
+              statusCfg.tone === 'success'
+                ? 'text-success'
+                : statusCfg.tone === 'warning'
+                  ? 'text-warning-foreground'
+                  : 'text-destructive'
+
+            return (
+              <Card key={account.id} className="transition-all hover:shadow-md">
+                <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+                  <Avatar className="size-11 shrink-0">
+                    {account.avatar_url && <AvatarImage src={account.avatar_url} alt="" />}
+                    <AvatarFallback
+                      className="text-base font-semibold text-background"
+                      style={{ backgroundColor: config.tint }}
+                    >
+                      {(account.display_name || account.provider).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <CardTitle className="truncate text-base">
+                      {account.display_name || 'Sin nombre'}
+                    </CardTitle>
+                    <Badge variant="outline" className="gap-1.5">
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ backgroundColor: config.tint }}
+                        aria-hidden
+                      />
+                      {config.label}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <StatusIcon className={cn('size-4 shrink-0', statusToneClass)} />
+                    <span className={cn('font-medium', statusToneClass)}>{statusCfg.label}</span>
+                  </div>
+                  {account.expires_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Token expira el{' '}
+                      {new Date(account.expires_at).toLocaleDateString('es-EC', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {statusKey !== 'active' && (
+                      <Button size="sm" variant="outline" onClick={() => handleReconnect(account)}>
+                        <RefreshCw className="size-3.5" />
+                        Reconectar
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDisconnect(account)}
+                      disabled={loadingDelete === account.id}
+                      loading={loadingDelete === account.id}
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      {loadingDelete !== account.id && <Trash2 className="size-3.5" />}
+                      Desconectar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Modal: conectar red social */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conectar red social</DialogTitle>
+            <DialogDescription>Seleccioná la plataforma que querés conectar.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {AVAILABLE_PROVIDERS.map((provider) => (
+              <button
+                key={provider.key}
+                onClick={() => {
+                  if (!provider.disabled) {
+                    setShowAddModal(false)
+                    handleConnect(provider.key)
+                  }
+                }}
+                disabled={provider.disabled}
+                className={cn(
+                  'flex w-full items-start justify-between gap-3 rounded-lg border p-4 text-left transition-all',
+                  provider.disabled
+                    ? 'cursor-not-allowed border-border bg-muted/30 opacity-50'
+                    : 'border-border bg-card hover:border-primary/40 hover:bg-accent',
+                )}
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{
+                        backgroundColor:
+                          PROVIDER_CONFIG[provider.key]?.tint || 'var(--muted-foreground)',
+                      }}
+                      aria-hidden
+                    />
+                    <p className="font-medium text-foreground">{provider.label}</p>
+                    {provider.disabled && <Badge variant="muted">Pronto</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{provider.description}</p>
+                </div>
+                {!provider.disabled && <Plus className="size-4 shrink-0 text-primary" />}
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddModal(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {showAssignPageModal && userId && orgId && (
         <AssignPageModal
+          open={showAssignPageModal}
           userId={userId}
           defaultOrgId={orgId}
           onClose={() => setShowAssignPageModal(false)}
@@ -231,167 +446,9 @@ export default function ConnectionsPage() {
           }}
         />
       )}
-
-      {/* Mensajes de estado */}
-      {successParam && (
-        <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-green-800">
-          <p className="font-medium">
-            {providerParam === 'meta' || providerParam === 'facebook'
-              ? 'Facebook conectado.'
-              : providerParam === 'instagram'
-                ? 'Instagram conectado.'
-                : 'Cuenta conectada exitosamente.'}
-          </p>
-          {(providerParam === 'meta' || providerParam === 'facebook') && pagesParam && (
-            <p className="mt-1 text-sm text-green-700">
-              {pagesParam} Page(s) de Facebook
-              {instagramParam && Number(instagramParam) > 0
-                ? ` y ${instagramParam} cuenta(s) de Instagram Business`
-                : ''}{' '}
-              vinculadas.
-            </p>
-          )}
-        </div>
-      )}
-      {errorParam && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
-          <p className="font-medium">
-            No se pudo conectar
-            {providerParam ? ` con ${PROVIDER_CONFIG[providerParam]?.label || providerParam}` : ''}.
-          </p>
-          <p className="mt-1 whitespace-pre-line text-sm text-red-700">{errorLabel}</p>
-        </div>
-      )}
-
-      {/* Lista de cuentas */}
-      {accounts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-          <Link2 className="mx-auto h-12 w-12 text-gray-300" />
-          <p className="mt-4 text-lg font-medium text-gray-600">Sin cuentas conectadas</p>
-          <p className="mt-1 text-gray-400">Conecta tu primera red social para empezar.</p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            Conectar ahora
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account) => {
-            const config = PROVIDER_CONFIG[account.provider] || { label: account.provider, color: 'text-gray-700', bgColor: 'bg-gray-100' }
-            const statusCfg = STATUS_CONFIG[account.status] || STATUS_CONFIG.error
-            const StatusIcon = statusCfg.icon
-
-            return (
-              <div key={account.id} className="rounded-lg border border-gray-200 bg-white p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    {account.avatar_url ? (
-                      <img src={account.avatar_url} alt="" className="h-10 w-10 rounded-full" />
-                    ) : (
-                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${config.bgColor} text-sm font-bold ${config.color}`}>
-                        {(account.display_name || account.provider).charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-semibold text-gray-900">{account.display_name || 'Sin nombre'}</p>
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${config.bgColor} ${config.color}`}>
-                        {config.label}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center gap-1.5">
-                  <StatusIcon className={`h-4 w-4 ${statusCfg.className}`} />
-                  <span className={`text-sm ${statusCfg.className}`}>{statusCfg.label}</span>
-                </div>
-
-                {account.expires_at && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    Token expira: {new Date(account.expires_at).toLocaleDateString('es')}
-                  </p>
-                )}
-
-                <div className="mt-4 flex gap-2">
-                  {account.status !== 'active' && (
-                    <button
-                      onClick={() => handleReconnect(account)}
-                      className="flex items-center gap-1 rounded-lg border border-yellow-300 px-3 py-1.5 text-xs font-medium text-yellow-700 hover:bg-yellow-50"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Reconectar
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDisconnect(account.id)}
-                    disabled={loadingDelete === account.id}
-                    className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    {loadingDelete === account.id ? 'Eliminando...' : 'Desconectar'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Modal para agregar conexión */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-gray-900">Conectar red social</h2>
-            <p className="mt-1 text-sm text-gray-500">Selecciona la plataforma que quieres conectar.</p>
-
-            <div className="mt-4 space-y-2">
-              {AVAILABLE_PROVIDERS.map((provider) => (
-                <button
-                  key={provider.key}
-                  onClick={() => {
-                    if (!provider.disabled) {
-                      setShowAddModal(false)
-                      handleConnect(provider.key)
-                    }
-                  }}
-                  disabled={provider.disabled}
-                  className={`flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors ${
-                    provider.disabled
-                      ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                  }`}
-                >
-                  <div>
-                    <p className={`font-medium ${provider.disabled ? 'text-gray-400' : 'text-gray-900'}`}>
-                      {provider.label}
-                    </p>
-                    <p className="text-sm text-gray-500">{provider.description}</p>
-                  </div>
-                  {provider.disabled ? (
-                    <span className="text-xs text-gray-400">Pronto</span>
-                  ) : (
-                    <Plus className="h-5 w-5 text-blue-600" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="mt-4 w-full rounded-lg border border-gray-300 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
-// ============== Modal: Asignar Page (admin) ==============
 
 interface OrgOption {
   id: string
@@ -409,11 +466,13 @@ interface AvailablePageRow {
 }
 
 function AssignPageModal({
+  open,
   userId,
   defaultOrgId,
   onClose,
   onSuccess,
 }: {
+  open: boolean
   userId: string
   defaultOrgId: string
   onClose: () => void
@@ -436,7 +495,6 @@ function AssignPageModal({
     let cancelled = false
     ;(async () => {
       try {
-        // Import dinámico para no engrosar bundle si nunca se abre el modal
         const { listAvailablePages } = await import('@/lib/admin-social/api')
         const [orgsData, pagesData] = await Promise.all([
           supabase.from('organizations').select('id, name, slug').order('name'),
@@ -462,7 +520,7 @@ function AssignPageModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedOrgId || !selectedPageId) {
-      setSubmitError('Elige organización y Page')
+      setSubmitError('Elegí organización y Page.')
       return
     }
     setSubmitting(true)
@@ -484,8 +542,8 @@ function AssignPageModal({
         fb: r.facebook?.display_name || '?',
         ig: r.instagram?.display_name || null,
       })
-      // Esperar 2s para que el usuario vea el resultado antes de cerrar
-      setTimeout(onSuccess, 2000)
+      toast.success('Page asignada correctamente.')
+      setTimeout(onSuccess, 1500)
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'Error')
     } finally {
@@ -494,143 +552,133 @@ function AssignPageModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 className="font-semibold text-gray-900">Asignar Page de Business a organización</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <XCircle className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Asignar Page de Business a organización</DialogTitle>
+          <DialogDescription>
+            Usá esto cuando una Page vive en tu Business Manager pero el OAuth de Facebook no la
+            devuelve (modelo agencia). Las credenciales vienen del System User en server.
+          </DialogDescription>
+        </DialogHeader>
 
         {loading ? (
-          <div className="px-6 py-10 text-gray-500">Cargando Pages del Business...</div>
+          <p className="py-6 text-center text-sm text-muted-foreground">Cargando Pages del Business…</p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-            <p className="text-sm text-gray-600">
-              Usa esto cuando una Page vive en tu Business Manager pero el OAuth de
-              Facebook no la devuelve (modelo agencia). Las credenciales vienen del
-              System User configurado en server.
-            </p>
-
+          <form onSubmit={handleSubmit} className="space-y-4">
             {loadError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {loadError}
-              </div>
+              <Alert variant="destructive">
+                <AlertDescription>{loadError}</AlertDescription>
+              </Alert>
             )}
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Organización destino <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedOrgId}
-                onChange={(e) => setSelectedOrgId(e.target.value)}
-                required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">— Elige org —</option>
-                {orgs.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name} ({o.slug})
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-1.5">
+              <Label htmlFor="org">
+                Organización destino <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                <SelectTrigger id="org">
+                  <SelectValue placeholder="Elegí org" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.name} <span className="text-muted-foreground">· {o.slug}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Page <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedPageId}
-                onChange={(e) => setSelectedPageId(e.target.value)}
-                required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">— Elige Page —</option>
-                {pages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || p.id} {p.kind === 'client' ? '· cliente' : '· owned'}
-                    {!p.canPublish ? ' · ⚠️ sin Create content' : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-1.5">
+              <Label htmlFor="page">
+                Page <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedPageId} onValueChange={setSelectedPageId}>
+                <SelectTrigger id="page">
+                  <SelectValue placeholder="Elegí Page" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pages.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name || p.id}
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        · {p.kind === 'client' ? 'cliente' : 'owned'}
+                      </span>
+                      {!p.canPublish && <span className="ml-1 text-xs text-warning-foreground">· ⚠</span>}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {pages.length === 0 && !loadError && (
-                <p className="mt-1 text-xs text-yellow-700">
-                  No hay Pages disponibles. Verifica que el System User tenga Pages
-                  asignadas en Business Settings.
+                <p className="text-xs text-warning-foreground">
+                  No hay Pages disponibles. Verificá que el System User tenga Pages asignadas en
+                  Business Settings.
                 </p>
               )}
             </div>
 
             {selectedPage?.hasInstagram && (
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={includeIg}
-                  onChange={(e) => setIncludeIg(e.target.checked)}
-                />
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <Checkbox checked={includeIg} onCheckedChange={(v) => setIncludeIg(!!v)} />
                 Importar también la Instagram Business vinculada
               </label>
             )}
 
             {selectedPage && !selectedPage.canPublish && (
-              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                ⚠️ El System User no tiene <code>CREATE_CONTENT</code> ni <code>MANAGE</code>{' '}
-                sobre esta Page. Se puede asignar, pero las publicaciones van a fallar
-                hasta que ajustes permisos en Business Settings.
-              </div>
+              <Alert variant="warning">
+                <AlertTriangle className="size-4" />
+                <AlertTitle>El System User no puede publicar</AlertTitle>
+                <AlertDescription>
+                  Le falta <code className="rounded bg-muted px-1 py-0.5">CREATE_CONTENT</code> o{' '}
+                  <code className="rounded bg-muted px-1 py-0.5">MANAGE</code> sobre esta Page. Se
+                  puede asignar pero las publicaciones van a fallar.
+                </AlertDescription>
+              </Alert>
             )}
 
             {submitError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {submitError}
-              </div>
+              <Alert variant="destructive">
+                <AlertDescription>{submitError}</AlertDescription>
+              </Alert>
             )}
 
             {success && (
-              <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                ✅ Asignada: <strong>{success.fb}</strong>
-                {success.ig && (
-                  <>
-                    {' '}
-                    + Instagram <strong>{success.ig}</strong>
-                  </>
-                )}
-              </div>
+              <Alert variant="success">
+                <CheckCircle2 className="size-4" />
+                <AlertTitle>Asignada</AlertTitle>
+                <AlertDescription>
+                  <strong>{success.fb}</strong>
+                  {success.ig && <> + Instagram <strong>{success.ig}</strong></>}
+                </AlertDescription>
+              </Alert>
             )}
 
             {warnings.length > 0 && (
-              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                <p className="font-medium">Advertencias:</p>
-                <ul className="mt-1 list-disc pl-5">
-                  {warnings.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-              </div>
+              <Alert variant="warning">
+                <AlertTriangle className="size-4" />
+                <AlertTitle>Advertencias</AlertTitle>
+                <AlertDescription>
+                  <ul className="mt-1 list-disc pl-5">
+                    {warnings.map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cerrar
-              </button>
-              <button
-                type="submit"
-                disabled={submitting || !!success}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {submitting ? 'Asignando...' : 'Asignar'}
-              </button>
-            </div>
+              </Button>
+              <Button type="submit" loading={submitting} disabled={submitting || !!success}>
+                {submitting ? 'Asignando' : 'Asignar'}
+              </Button>
+            </DialogFooter>
           </form>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
