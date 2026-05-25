@@ -1,9 +1,48 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, Save, ArrowLeft, Plus, X, Sparkles, Loader2, Upload, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Save,
+  Send,
+  Sparkles,
+  Upload,
+  Video as VideoIcon,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+import { cn } from '@/lib/utils'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 
 interface SocialAccount {
   id: string
@@ -33,19 +72,18 @@ interface Variant {
   media: MediaItem[]
 }
 
-// Redes que requieren al menos 1 media para publicar
 const MEDIA_REQUIRED_PROVIDERS = new Set(['instagram', 'tiktok'])
 const VIDEO_EXTS = new Set(['mp4', 'mov'])
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp'])
 
-const PROVIDER_COLORS: Record<string, string> = {
-  facebook: 'border-blue-500 bg-blue-50',
-  instagram: 'border-pink-500 bg-pink-50',
-  linkedin: 'border-blue-700 bg-blue-50',
-  tiktok: 'border-gray-800 bg-gray-50',
-  x: 'border-gray-900 bg-gray-50',
-  youtube: 'border-red-600 bg-red-50',
-  threads: 'border-gray-600 bg-gray-50',
+const PROVIDER_TINT: Record<string, string> = {
+  facebook: 'oklch(0.55 0.18 250)',
+  instagram: 'oklch(0.6 0.22 0)',
+  linkedin: 'oklch(0.48 0.15 240)',
+  tiktok: 'oklch(0.45 0 0)',
+  x: 'oklch(0.2 0 0)',
+  youtube: 'oklch(0.55 0.22 27)',
+  threads: 'oklch(0.4 0 0)',
 }
 
 const CHAR_LIMITS: Record<string, number> = {
@@ -56,6 +94,10 @@ const CHAR_LIMITS: Record<string, number> = {
   x: 280,
   youtube: 5000,
   threads: 500,
+}
+
+function providerLabel(p: string): string {
+  return p.charAt(0).toUpperCase() + p.slice(1)
 }
 
 export default function NewPostPage() {
@@ -79,20 +121,7 @@ export default function NewPostPage() {
   >([])
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [networkPickerOpen, setNetworkPickerOpen] = useState(false)
-  const networkPickerRef = useRef<HTMLDivElement | null>(null)
   const supabase = createClient()
-
-  useEffect(() => {
-    if (!networkPickerOpen) return
-    function onPointerDown(e: PointerEvent) {
-      if (!networkPickerRef.current?.contains(e.target as Node)) {
-        setNetworkPickerOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [networkPickerOpen])
 
   async function getAuthToken(): Promise<string | null> {
     const { data } = await supabase.auth.getSession()
@@ -109,7 +138,7 @@ export default function NewPostPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
       const token = await getAuthToken()
       if (!token) {
-        setError('Sesión no válida. Recarga la página.')
+        toast.error('Sesión no válida. Recarga la página.')
         return
       }
       const newMedia: MediaItem[] = []
@@ -117,7 +146,9 @@ export default function NewPostPage() {
         const extRaw = (file.name.split('.').pop() || '').toLowerCase()
         const ext = extRaw === 'jpg' ? 'jpg' : extRaw
         if (!IMAGE_EXTS.has(ext) && !VIDEO_EXTS.has(ext)) {
-          setError(`Tipo no soportado: ${file.name}. Usa png/jpg/jpeg/webp/mp4/mov.`)
+          toast.error(`Tipo no soportado: ${file.name}`, {
+            description: 'Acepta png, jpg, jpeg, webp, mp4 o mov.',
+          })
           continue
         }
         const isVideo = VIDEO_EXTS.has(ext)
@@ -128,7 +159,7 @@ export default function NewPostPage() {
         })
         if (!initRes.ok) {
           const body = await initRes.json().catch(() => ({}))
-          setError(body.error || `Error iniciando upload de ${file.name}`)
+          toast.error(body.error || `Error iniciando upload de ${file.name}`)
           continue
         }
         const init = await initRes.json()
@@ -141,7 +172,7 @@ export default function NewPostPage() {
           body: file,
         })
         if (!uploadRes.ok) {
-          setError(`Error subiendo ${file.name}`)
+          toast.error(`Error subiendo ${file.name}`)
           continue
         }
 
@@ -158,12 +189,16 @@ export default function NewPostPage() {
       if (newMedia.length > 0) {
         setVariants((prev) => {
           const updated = [...prev]
-          updated[activeTab] = { ...updated[activeTab], media: [...(updated[activeTab].media || []), ...newMedia] }
+          updated[activeTab] = {
+            ...updated[activeTab],
+            media: [...(updated[activeTab].media || []), ...newMedia],
+          }
           return updated
         })
+        toast.success(`${newMedia.length} archivo${newMedia.length > 1 ? 's' : ''} subido${newMedia.length > 1 ? 's' : ''}.`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error subiendo media')
+      toast.error(err instanceof Error ? err.message : 'Error subiendo media')
     } finally {
       setUploadingMedia(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -199,8 +234,9 @@ export default function NewPostPage() {
       })
       const data = await res.json()
       if (res.ok && data.variants) setAiSuggestions(data.variants)
+      else toast.error(data?.error || 'No se pudieron generar variantes.')
     } catch {
-      // silent — el modal queda con suggestions vacío
+      toast.error('Error generando con IA.')
     } finally {
       setAiLoading(false)
     }
@@ -212,14 +248,21 @@ export default function NewPostPage() {
     setAiOpen(false)
     setAiSuggestions([])
     setAiTopic('')
+    toast.success('Variante aplicada.')
   }
 
   const loadAccounts = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
 
-    const { data: org } = await supabase.from('organizations').select('id').eq('slug', orgSlug).single()
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug', orgSlug)
+      .single()
     if (!org) return
     setOrgId(org.id)
 
@@ -232,26 +275,30 @@ export default function NewPostPage() {
     if (data) setAccounts(data)
   }, [supabase, orgSlug])
 
-  useEffect(() => { loadAccounts() }, [loadAccounts])
+  useEffect(() => {
+    loadAccounts()
+  }, [loadAccounts])
 
   function addVariant(account: SocialAccount) {
-    setNetworkPickerOpen(false)
     if (variants.find((v) => v.socialAccountId === account.id)) return
-    setVariants([...variants, {
-      socialAccountId: account.id,
-      provider: account.provider,
-      displayName: account.display_name || account.provider,
-      content: '',
-      hashtags: '',
-      linkUrl: '',
-      media: [],
-    }])
+    setVariants([
+      ...variants,
+      {
+        socialAccountId: account.id,
+        provider: account.provider,
+        displayName: account.display_name || providerLabel(account.provider),
+        content: '',
+        hashtags: '',
+        linkUrl: '',
+        media: [],
+      },
+    ])
     setActiveTab(variants.length)
   }
 
   function removeVariant(index: number) {
-    setVariants(variants.filter((_, i) => i !== index))
-    if (activeTab >= variants.length - 1) setActiveTab(Math.max(0, variants.length - 2))
+    setVariants((prev) => prev.filter((_, i) => i !== index))
+    setActiveTab((tab) => (tab >= index ? Math.max(0, tab - 1) : tab))
   }
 
   function updateVariant(index: number, field: keyof Variant, value: string) {
@@ -262,18 +309,20 @@ export default function NewPostPage() {
 
   async function handleSave(asDraft: boolean) {
     if (variants.length === 0) {
-      setError('Agrega al menos una red social.')
+      setError('Agregá al menos una red social.')
       return
     }
-
     if (variants.some((v) => !v.content.trim())) {
       setError('Todas las variantes deben tener contenido.')
       return
     }
-
-    const missingMedia = variants.find((v) => MEDIA_REQUIRED_PROVIDERS.has(v.provider) && (v.media?.length ?? 0) === 0)
+    const missingMedia = variants.find(
+      (v) => MEDIA_REQUIRED_PROVIDERS.has(v.provider) && (v.media?.length ?? 0) === 0,
+    )
     if (missingMedia) {
-      setError(`${missingMedia.provider} requiere al menos una imagen o video. Súbelo en la pestaña correspondiente.`)
+      setError(
+        `${providerLabel(missingMedia.provider)} requiere al menos una imagen o video. Subilo en la pestaña correspondiente.`,
+      )
       return
     }
 
@@ -291,7 +340,12 @@ export default function NewPostPage() {
       variants: variants.map((v) => ({
         socialAccountId: v.socialAccountId,
         content: v.content,
-        hashtags: v.hashtags ? v.hashtags.split(',').map((h) => h.trim()).filter(Boolean) : [],
+        hashtags: v.hashtags
+          ? v.hashtags
+              .split(',')
+              .map((h) => h.trim())
+              .filter(Boolean)
+          : [],
         linkUrl: v.linkUrl || undefined,
         media: (v.media || []).map((m, i) => ({
           assetId: m.assetId,
@@ -316,329 +370,487 @@ export default function NewPostPage() {
         return
       }
 
+      toast.success(asDraft ? 'Borrador guardado.' : scheduledAt ? 'Post programado.' : 'Borrador guardado.')
       router.push(`/${orgSlug}/calendar`)
     } catch {
-      setError('Error de conexion con el servidor.')
+      setError('Error de conexión con el servidor.')
       setSaving(false)
     }
   }
 
   const currentVariant = variants[activeTab]
   const charLimit = currentVariant ? CHAR_LIMITS[currentVariant.provider] || 5000 : 5000
+  const charsUsed = currentVariant?.content.length ?? 0
+  const charsOver = charsUsed > charLimit * 0.9
+  const availableAccounts = accounts.filter((a) => !variants.find((v) => v.socialAccountId === a.id))
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="rounded-lg p-2 hover:bg-gray-100">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nuevo post</h1>
-          <p className="text-gray-600">Crea contenido para una o varias redes sociales.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Volver">
+            <ArrowLeft className="size-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Nuevo post</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Creá contenido para una o varias redes sociales en una sola pasada.
+            </p>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Panel izquierdo: editor */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Titulo interno (opcional)"
-              className="w-full text-lg font-semibold border-0 border-b border-gray-200 pb-2 focus:outline-none focus:border-blue-500"
-            />
-
-            {/* Tabs por red social */}
-            <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
-              {variants.map((v, i) => (
-                <button
-                  key={v.socialAccountId}
-                  onClick={() => setActiveTab(i)}
-                  className={`flex items-center gap-1.5 rounded-t-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap ${
-                    activeTab === i
-                      ? `border-b-2 ${PROVIDER_COLORS[v.provider]?.split(' ')[0] || 'border-blue-500'} text-gray-900`
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {v.displayName}
-                  <button onClick={(e) => { e.stopPropagation(); removeVariant(i) }} className="ml-1 rounded-full p-0.5 hover:bg-gray-200">
-                    <X className="h-3 w-3" />
-                  </button>
-                </button>
-              ))}
-              {/* Dropdown para agregar red */}
-              <div className="relative" ref={networkPickerRef}>
-                <button
-                  type="button"
-                  onClick={() => setNetworkPickerOpen((v) => !v)}
-                  aria-expanded={networkPickerOpen}
-                  aria-haspopup="menu"
-                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50"
-                >
-                  <Plus className="h-4 w-4" /> Red
-                </button>
-                {networkPickerOpen && (
-                  <div
-                    role="menu"
-                    className="absolute left-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                  >
-                    {accounts.filter((a) => !variants.find((v) => v.socialAccountId === a.id)).map((account) => (
-                      <button
-                        key={account.id}
-                        type="button"
-                        onClick={() => addVariant(account)}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {account.display_name || account.provider}
-                        <span className="text-xs text-gray-400">({account.provider})</span>
-                      </button>
-                    ))}
-                    {accounts.length === 0 && (
-                      <p className="px-3 py-2 text-xs text-gray-400">Sin cuentas conectadas</p>
-                    )}
-                    {accounts.length > 0 && accounts.every((a) => variants.find((v) => v.socialAccountId === a.id)) && (
-                      <p className="px-3 py-2 text-xs text-gray-400">Ya agregaste todas tus cuentas.</p>
-                    )}
-                  </div>
-                )}
+        {/* Editor */}
+        <div className="space-y-4 lg:col-span-2">
+          <Card>
+            <CardContent className="space-y-5 pt-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="post-title" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Título interno
+                </Label>
+                <Input
+                  id="post-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Solo lo ve tu equipo (opcional)"
+                  className="border-0 border-b border-input bg-transparent px-0 text-lg font-semibold shadow-none rounded-none focus-visible:ring-0 focus-visible:border-ring"
+                />
               </div>
-            </div>
 
-            {/* Editor de la variante activa */}
-            {currentVariant ? (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setAiOpen(true)}
-                    type="button"
-                    className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Generar con IA
-                  </button>
-                </div>
-                <div>
-                  <textarea
-                    value={currentVariant.content}
-                    onChange={(e) => updateVariant(activeTab, 'content', e.target.value)}
-                    rows={6}
-                    maxLength={charLimit}
-                    placeholder={`Escribe tu contenido para ${currentVariant.displayName}...`}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
-                  />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>{currentVariant.provider} — limite {charLimit.toLocaleString()} caracteres</span>
-                    <span className={currentVariant.content.length > charLimit * 0.9 ? 'text-red-500' : ''}>
-                      {currentVariant.content.length}/{charLimit}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Media uploader */}
-                <div className="rounded-lg border border-dashed border-gray-300 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-600">
-                      Media {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider) && <span className="text-red-500">*</span>}
-                      <span className="ml-1 text-gray-400">(imágenes y videos)</span>
-                    </p>
+              {/* Tabs por red social */}
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-border pb-3">
+                {variants.map((v, i) => {
+                  const active = activeTab === i
+                  return (
                     <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingMedia}
-                      className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                      key={v.socialAccountId}
+                      onClick={() => setActiveTab(i)}
+                      className={cn(
+                        'group flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
+                        active
+                          ? 'border-transparent bg-foreground text-background shadow-sm'
+                          : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                      )}
                     >
-                      {uploadingMedia ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                      {uploadingMedia ? 'Subiendo...' : 'Subir archivo'}
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ backgroundColor: PROVIDER_TINT[v.provider] || 'currentColor' }}
+                        aria-hidden
+                      />
+                      <span className="truncate max-w-[140px]">{v.displayName}</span>
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeVariant(i)
+                        }}
+                        className={cn(
+                          'ml-0.5 rounded-full p-0.5 transition-colors',
+                          active
+                            ? 'hover:bg-background/20 text-background/80'
+                            : 'hover:bg-muted text-muted-foreground',
+                        )}
+                        aria-label={`Quitar ${v.displayName}`}
+                      >
+                        <X className="size-3" />
+                      </span>
                     </button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => { if (e.target.files) uploadMediaFiles(e.target.files) }}
-                  />
-                  {currentVariant.media && currentVariant.media.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-2">
-                      {currentVariant.media.map((m, i) => (
-                        <div key={m.assetId} className="relative aspect-square rounded-md border border-gray-200 bg-gray-50 overflow-hidden">
-                          {m.mediaType === 'image' ? (
-                            <img src={m.previewUrl} alt={m.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <video src={m.previewUrl} className="h-full w-full object-cover" muted />
-                          )}
-                          <div className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                            {m.mediaType === 'image' ? <ImageIcon className="inline h-3 w-3" /> : <VideoIcon className="inline h-3 w-3" />}
+                  )
+                })}
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" size="sm" variant="outline" className="gap-1.5 rounded-full">
+                      <Plus className="size-4" />
+                      Red
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-60">
+                    <DropdownMenuLabel>Agregar variante</DropdownMenuLabel>
+                    {availableAccounts.length === 0 ? (
+                      <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                        {accounts.length === 0 ? (
+                          <>
+                            No tenés cuentas conectadas.{' '}
+                            <a href={`/${orgSlug}/connections`} className="underline">
+                              Conectar →
+                            </a>
+                          </>
+                        ) : (
+                          'Ya agregaste todas tus cuentas.'
+                        )}
+                      </div>
+                    ) : (
+                      availableAccounts.map((account) => (
+                        <DropdownMenuItem
+                          key={account.id}
+                          onSelect={() => addVariant(account)}
+                          className="gap-2"
+                        >
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: PROVIDER_TINT[account.provider] || 'currentColor' }}
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {account.display_name || providerLabel(account.provider)}
+                            </p>
+                            <p className="text-xs text-muted-foreground capitalize">{account.provider}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeMedia(activeTab, i)}
-                            className="absolute top-1 right-1 rounded-full bg-white/90 p-0.5 shadow hover:bg-white"
-                          >
-                            <X className="h-3 w-3 text-gray-700" />
-                          </button>
-                        </div>
-                      ))}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Editor de variante */}
+              {currentVariant ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Badge variant="outline" className="capitalize">
+                      <span
+                        className="size-1.5 rounded-full"
+                        style={{ backgroundColor: PROVIDER_TINT[currentVariant.provider] || 'currentColor' }}
+                        aria-hidden
+                      />
+                      {currentVariant.provider}
+                    </Badge>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAiOpen(true)}
+                      className="gap-1.5"
+                    >
+                      <Sparkles className="size-3.5 text-primary" />
+                      Generar con IA
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="content">Contenido</Label>
+                    <Textarea
+                      id="content"
+                      value={currentVariant.content}
+                      onChange={(e) => updateVariant(activeTab, 'content', e.target.value)}
+                      rows={7}
+                      maxLength={charLimit}
+                      placeholder={`Escribí tu contenido para ${currentVariant.displayName}...`}
+                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Límite {charLimit.toLocaleString()} caracteres
+                      </span>
+                      <span className={cn('tabular-nums', charsOver ? 'text-destructive font-medium' : 'text-muted-foreground')}>
+                        {charsUsed} / {charLimit}
+                      </span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">
-                      {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider)
-                        ? `${currentVariant.provider} requiere al menos 1 imagen o video`
-                        : 'Sin archivos. Acepta png, jpg, webp, mp4, mov.'}
-                    </p>
-                  )}
+                  </div>
+
+                  {/* Media uploader */}
+                  <div className="rounded-lg border border-dashed border-input bg-muted/30 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Media
+                          {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider) && (
+                            <span className="ml-1 text-destructive" aria-label="requerido">
+                              *
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, MP4 o MOV.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingMedia}
+                        loading={uploadingMedia}
+                      >
+                        {!uploadingMedia && <Upload className="size-4" />}
+                        {uploadingMedia ? 'Subiendo' : 'Subir archivo'}
+                      </Button>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) uploadMediaFiles(e.target.files)
+                      }}
+                    />
+                    {currentVariant.media && currentVariant.media.length > 0 ? (
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {currentVariant.media.map((m, i) => (
+                          <div
+                            key={m.assetId}
+                            className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+                          >
+                            {m.mediaType === 'image' ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={m.previewUrl} alt={m.name} className="size-full object-cover" />
+                            ) : (
+                              <video src={m.previewUrl} className="size-full object-cover" muted />
+                            )}
+                            <div className="absolute left-1.5 top-1.5 rounded-md bg-foreground/70 px-1.5 py-0.5 backdrop-blur-sm">
+                              {m.mediaType === 'image' ? (
+                                <ImageIcon className="size-3 text-background" />
+                              ) : (
+                                <VideoIcon className="size-3 text-background" />
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeMedia(activeTab, i)}
+                              className="absolute right-1.5 top-1.5 rounded-md bg-background/90 p-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100"
+                              aria-label="Quitar archivo"
+                            >
+                              <X className="size-3 text-foreground" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {MEDIA_REQUIRED_PROVIDERS.has(currentVariant.provider)
+                          ? `${providerLabel(currentVariant.provider)} requiere al menos 1 imagen o video.`
+                          : 'Sin archivos adjuntos todavía.'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hashtags">Hashtags</Label>
+                      <Input
+                        id="hashtags"
+                        value={currentVariant.hashtags}
+                        onChange={(e) => updateVariant(activeTab, 'hashtags', e.target.value)}
+                        placeholder="ventas, ecommerce, kapi"
+                      />
+                      <p className="text-xs text-muted-foreground">Separados por coma. Sin el #.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="link">URL</Label>
+                      <Input
+                        id="link"
+                        type="url"
+                        value={currentVariant.linkUrl}
+                        onChange={(e) => updateVariant(activeTab, 'linkUrl', e.target.value)}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-12 text-center">
+                  <div className="rounded-full bg-muted p-3">
+                    <Plus className="size-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Aún no agregaste una red</p>
+                    <p className="text-xs text-muted-foreground">
+                      Tocá &ldquo;+ Red&rdquo; arriba para empezar a escribir.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <input
-                  type="text"
-                  value={currentVariant.hashtags}
-                  onChange={(e) => updateVariant(activeTab, 'hashtags', e.target.value)}
-                  placeholder="Hashtags (separados por coma)"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-
-                <input
-                  type="url"
-                  value={currentVariant.linkUrl}
-                  onChange={(e) => updateVariant(activeTab, 'linkUrl', e.target.value)}
-                  placeholder="URL (opcional)"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Notas internas
+                </Label>
+                <Textarea
+                  id="notes"
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Solo tu equipo las ve."
                 />
               </div>
-            ) : (
-              <div className="py-12 text-center text-gray-400">
-                <p>Selecciona una red social para empezar a crear contenido.</p>
-              </div>
-            )}
-          </div>
-
-          <textarea
-            value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
-            rows={2}
-            placeholder="Notas internas (solo tu equipo las ve)"
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 focus:border-blue-500 focus:outline-none"
-          />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Panel derecho: programacion y acciones */}
+        {/* Panel derecho */}
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-            <h3 className="font-semibold text-gray-900">Programacion</h3>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <p className="text-xs text-gray-400">
-              Deja vacio para guardar como borrador.
-            </p>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <CalendarIcon className="size-4 text-primary" />
+                Programación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Dejá vacío para guardar como borrador.
+              </p>
+            </CardContent>
+          </Card>
 
-          {/* Preview */}
           {currentVariant && currentVariant.content && (
-            <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
-              <h3 className="font-semibold text-gray-900">Preview</h3>
-              <div className={`rounded-lg border-l-4 p-4 ${PROVIDER_COLORS[currentVariant.provider] || 'border-gray-300 bg-gray-50'}`}>
-                <p className="text-xs font-semibold text-gray-500 mb-2">{currentVariant.provider.toUpperCase()}</p>
-                <p className="text-sm text-gray-800 whitespace-pre-wrap">{currentVariant.content}</p>
-                {currentVariant.hashtags && (
-                  <p className="mt-2 text-sm text-blue-600">
-                    {currentVariant.hashtags.split(',').map((h) => `#${h.trim()}`).join(' ')}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="rounded-lg border-l-4 bg-muted/40 p-4"
+                  style={{ borderLeftColor: PROVIDER_TINT[currentVariant.provider] || 'var(--border)' }}
+                >
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {currentVariant.provider}
                   </p>
-                )}
-                {currentVariant.linkUrl && (
-                  <p className="mt-1 text-xs text-gray-400 truncate">{currentVariant.linkUrl}</p>
-                )}
-              </div>
-            </div>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {currentVariant.content}
+                  </p>
+                  {currentVariant.hashtags && (
+                    <p className="mt-2 text-sm text-primary">
+                      {currentVariant.hashtags
+                        .split(',')
+                        .map((h) => `#${h.trim().replace(/^#/, '')}`)
+                        .join(' ')}
+                    </p>
+                  )}
+                  {currentVariant.linkUrl && (
+                    <p className="mt-2 truncate text-xs text-muted-foreground">{currentVariant.linkUrl}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>No se pudo guardar</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           <div className="space-y-2">
-            <button
+            <Button
+              size="lg"
               onClick={() => handleSave(false)}
-              disabled={saving || variants.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              disabled={variants.length === 0}
+              loading={saving}
+              className="w-full"
             >
-              <Send className="h-4 w-4" />
-              {saving ? 'Guardando...' : scheduledAt ? 'Programar post' : 'Guardar como borrador'}
-            </button>
-            <button
+              {!saving && <Send className="size-4" />}
+              {saving ? 'Guardando' : scheduledAt ? 'Programar post' : 'Guardar como borrador'}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
               onClick={() => handleSave(true)}
-              disabled={saving || variants.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 py-2.5 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              disabled={variants.length === 0 || saving}
+              className="w-full"
             >
-              <Save className="h-4 w-4" />
+              <Save className="size-4" />
               Guardar borrador
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Modal: Generar con IA */}
-      {aiOpen && currentVariant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 p-5">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-blue-600" />
-                Generar con IA para {currentVariant.displayName}
-              </h3>
-              <button onClick={() => setAiOpen(false)} className="rounded p-1 hover:bg-gray-100">
-                <X className="h-5 w-5" />
-              </button>
+      {/* Modal IA */}
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-primary" />
+              Generar con IA {currentVariant && <span className="text-muted-foreground">· {currentVariant.displayName}</span>}
+            </DialogTitle>
+            <DialogDescription>
+              Claude genera 3 variantes de copy ajustadas al límite y tono de la red elegida.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-topic">Tema o idea</Label>
+              <Textarea
+                id="ai-topic"
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Ej: lanzamiento de nuestro servicio de consultoría para PyMEs..."
+              />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Tema o idea del post</label>
-                <textarea
-                  value={aiTopic}
-                  onChange={(e) => setAiTopic(e.target.value)}
-                  rows={3}
-                  maxLength={2000}
-                  placeholder="Ej: Lanzamiento de nuestro nuevo servicio de consultoría para PyMEs..."
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </div>
+            <Button
+              onClick={generateWithAI}
+              disabled={aiTopic.trim().length < 3}
+              loading={aiLoading}
+              className="w-full"
+              variant="gradient"
+            >
+              {!aiLoading && <Sparkles className="size-4" />}
+              {aiLoading ? 'Generando con Claude' : 'Generar 3 variantes'}
+            </Button>
 
-              <button
-                onClick={generateWithAI}
-                disabled={aiLoading || aiTopic.trim().length < 3}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {aiLoading ? 'Generando con Claude...' : 'Generar 3 variantes'}
-              </button>
-
-              {aiSuggestions.map((s, i) => (
-                <div key={i} className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500">Sugerencia {i + 1}</p>
-                  <p className="whitespace-pre-wrap text-sm text-gray-900">{s.content}</p>
-                  {s.hashtags.length > 0 && (
-                    <p className="text-xs text-blue-600">
-                      {s.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
-                    </p>
-                  )}
-                  <p className="text-xs italic text-gray-500">💡 {s.rationale}</p>
-                  <button
-                    onClick={() => applyAISuggestion(s)}
-                    className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-                  >
-                    Usar este texto
-                  </button>
+            {aiSuggestions.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  {aiSuggestions.map((s, i) => (
+                    <Card key={i} className="bg-muted/30">
+                      <CardContent className="space-y-2 pt-4">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="muted">Sugerencia {i + 1}</Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => applyAISuggestion(s)}
+                            className="gap-1.5"
+                          >
+                            <CheckCircle2 className="size-3.5" />
+                            Usar
+                          </Button>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{s.content}</p>
+                        {s.hashtags.length > 0 && (
+                          <p className="text-xs text-primary">
+                            {s.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
+                          </p>
+                        )}
+                        {s.rationale && (
+                          <p className="text-xs italic text-muted-foreground">
+                            <span className="not-italic">💡</span> {s.rationale}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAiOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

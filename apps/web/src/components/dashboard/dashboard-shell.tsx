@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './sidebar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 interface Organization {
   id: string
@@ -21,14 +24,10 @@ interface DashboardShellProps {
   children: React.ReactNode
 }
 
-/**
- * Shell del dashboard. Server component (layout.tsx) hace auth y carga
- * datos; este client component maneja el toggle del drawer móvil:
- *   - body scroll lock cuando está abierto
- *   - ESC key cierra
- *   - resize a desktop (>=1024px) cierra automaticamente para evitar
- *     estado inconsistente al rotar el dispositivo
- */
+function initials(name: string): string {
+  return name.charAt(0).toUpperCase() || '?'
+}
+
 export function DashboardShell({
   currentOrg,
   organizations,
@@ -38,14 +37,8 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  // Estable a traves de renders. Sin esto, cada render del Shell crea una
-  // funcion nueva, lo que dispara los useEffect de Sidebar que la tienen
-  // en sus deps -> el drawer se cierra apenas se abre (loop visible como
-  // "se cuelga").
   const closeMobile = useCallback(() => setMobileOpen(false), [])
 
-  // Body scroll lock cuando el drawer está abierto (evita scroll fantasma del fondo)
   useEffect(() => {
     if (mobileOpen) {
       const previousOverflow = document.body.style.overflow
@@ -56,7 +49,6 @@ export function DashboardShell({
     }
   }, [mobileOpen])
 
-  // ESC cierra el drawer
   useEffect(() => {
     if (!mobileOpen) return
     function handleKey(e: KeyboardEvent) {
@@ -66,8 +58,6 @@ export function DashboardShell({
     return () => window.removeEventListener('keydown', handleKey)
   }, [mobileOpen])
 
-  // Si el viewport pasa a desktop (>=1024px) mientras el drawer está abierto,
-  // lo reseteo para que no quede el state inconsistente al rotar.
   useEffect(() => {
     function handleResize() {
       if (window.innerWidth >= 1024 && mobileOpen) setMobileOpen(false)
@@ -77,7 +67,7 @@ export function DashboardShell({
   }, [mobileOpen])
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen w-full bg-background text-foreground">
       <Sidebar
         currentOrg={currentOrg}
         organizations={organizations}
@@ -90,24 +80,33 @@ export function DashboardShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar móvil */}
-        <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 shadow-sm lg:hidden">
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 active:bg-gray-200"
-            aria-label="Abrir menú"
-            aria-expanded={mobileOpen}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
-              {currentOrg.name.charAt(0).toUpperCase()}
+        <header className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center justify-between gap-2 border-b border-border bg-background/85 px-3 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú"
+              aria-expanded={mobileOpen}
+            >
+              <Menu className="size-5" />
+            </Button>
+            <div className="flex min-w-0 items-center gap-2">
+              <Avatar className="size-7 rounded-md bg-gradient-to-br from-primary to-[oklch(0.55_0.22_290)]">
+                <AvatarFallback className="rounded-md bg-transparent text-xs font-semibold text-primary-foreground">
+                  {initials(currentOrg.name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="truncate text-sm font-semibold text-foreground">{currentOrg.name}</span>
             </div>
-            <span className="truncate text-sm font-semibold text-gray-900">{currentOrg.name}</span>
           </div>
+          <ThemeToggle />
         </header>
 
-        <main className="flex-1 overflow-auto p-3 sm:p-6">{children}</main>
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+        </main>
       </div>
     </div>
   )

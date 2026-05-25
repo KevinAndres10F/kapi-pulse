@@ -1,6 +1,7 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Coins } from 'lucide-react'
+
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { CreditsClient } from './credits-client'
 
 interface Props {
@@ -12,9 +13,6 @@ export default async function CreditsPage({ params }: Props) {
   const supabase = await createServerSupabaseClient()
   if (!supabase) redirect('/')
 
-  // Layout already validates org membership; we only need id + plan_id here.
-  // Keep the join out of this query so an RLS miss on `plans` can't null the
-  // entire row and trigger the redirect below.
   const { data: org } = await supabase
     .from('organizations')
     .select('id, plan_id')
@@ -22,8 +20,6 @@ export default async function CreditsPage({ params }: Props) {
     .single()
   if (!org) redirect('/onboarding')
 
-  // Fetch credits and plan in parallel; plan is optional (maybeSingle so it
-  // never throws even when plan_id is null or RLS blocks reads).
   const [{ data: credits }, { data: plan }] = await Promise.all([
     supabase
       .from('organization_credits')
@@ -42,11 +38,11 @@ export default async function CreditsPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Coins className="h-6 w-6 text-amber-500" />
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Coins className="size-6 text-warning-foreground" />
           Créditos
         </h1>
-        <p className="mt-1 text-gray-600">Balance, historial y precios por operación.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Balance, historial y precios por operación.</p>
       </div>
 
       <CreditsClient
@@ -55,8 +51,12 @@ export default async function CreditsPage({ params }: Props) {
         totalGranted={(credits?.total_granted as number) ?? 0}
         totalConsumed={(credits?.total_consumed as number) ?? 0}
         plan={
-          (plan as unknown as { code: string; name: string; monthly_credits: number; bonus_credits: number } | null) ||
-          null
+          (plan as unknown as {
+            code: string
+            name: string
+            monthly_credits: number
+            bonus_credits: number
+          } | null) || null
         }
       />
     </div>

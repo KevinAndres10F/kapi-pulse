@@ -1,9 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 interface Post {
   id: string
@@ -18,19 +23,56 @@ interface Post {
   }>
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-200 text-gray-700',
-  scheduled: 'bg-blue-100 text-blue-700',
-  publishing: 'bg-yellow-100 text-yellow-700',
-  published: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
-  cancelled: 'bg-gray-100 text-gray-400',
+const STATUS_STYLES: Record<string, { dot: string; bg: string; text: string; label: string }> = {
+  draft: {
+    dot: 'bg-muted-foreground/50',
+    bg: 'bg-muted',
+    text: 'text-foreground',
+    label: 'Borrador',
+  },
+  scheduled: {
+    dot: 'bg-primary',
+    bg: 'bg-primary/10',
+    text: 'text-primary',
+    label: 'Programado',
+  },
+  publishing: {
+    dot: 'bg-warning',
+    bg: 'bg-warning/15',
+    text: 'text-warning-foreground',
+    label: 'Publicando',
+  },
+  published: {
+    dot: 'bg-success',
+    bg: 'bg-success/10',
+    text: 'text-success',
+    label: 'Publicado',
+  },
+  failed: {
+    dot: 'bg-destructive',
+    bg: 'bg-destructive/10',
+    text: 'text-destructive',
+    label: 'Fallido',
+  },
+  cancelled: {
+    dot: 'bg-muted-foreground/40',
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    label: 'Cancelado',
+  },
 }
 
-const PROVIDER_EMOJI: Record<string, string> = {
-  facebook: 'FB', instagram: 'IG', linkedin: 'LI',
-  tiktok: 'TK', x: 'X', youtube: 'YT', threads: 'TH',
+const PROVIDER_LABEL: Record<string, string> = {
+  facebook: 'FB',
+  instagram: 'IG',
+  linkedin: 'LI',
+  tiktok: 'TK',
+  x: 'X',
+  youtube: 'YT',
+  threads: 'TH',
 }
+
+const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 export default function CalendarPage() {
   const { orgSlug } = useParams<{ orgSlug: string }>()
@@ -41,7 +83,10 @@ export default function CalendarPage() {
 
   const loadPosts = useCallback(async () => {
     const { data: org } = await supabase
-      .from('organizations').select('id').eq('slug', orgSlug).single()
+      .from('organizations')
+      .select('id')
+      .eq('slug', orgSlug)
+      .single()
     if (!org) return
 
     const year = currentDate.getFullYear()
@@ -51,15 +96,20 @@ export default function CalendarPage() {
 
     const { data } = await supabase
       .from('posts')
-      .select('id, title, status, scheduled_at, post_variants(id, content, status, social_accounts(provider, display_name))')
+      .select(
+        'id, title, status, scheduled_at, post_variants(id, content, status, social_accounts(provider, display_name))',
+      )
       .eq('organization_id', org.id)
-      .gte('scheduled_at', start).lte('scheduled_at', end)
+      .gte('scheduled_at', start)
+      .lte('scheduled_at', end)
       .order('scheduled_at', { ascending: true })
 
     if (data) setPosts(data as unknown as Post[])
   }, [supabase, orgSlug, currentDate])
 
-  useEffect(() => { loadPosts() }, [loadPosts])
+  useEffect(() => {
+    loadPosts()
+  }, [loadPosts])
 
   function getDaysInMonth() {
     const year = currentDate.getFullYear()
@@ -86,66 +136,148 @@ export default function CalendarPage() {
   const monthName = currentDate.toLocaleDateString('es', { month: 'long', year: 'numeric' })
   const today = new Date()
   const isToday = (day: number) =>
-    day === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear()
+    day === today.getDate() &&
+    currentDate.getMonth() === today.getMonth() &&
+    currentDate.getFullYear() === today.getFullYear()
+
+  function goPrev() {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+  }
+  function goNext() {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+  }
+  function goToday() {
+    setCurrentDate(new Date())
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <CalendarIcon className="h-6 w-6" /> Calendario
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            <CalendarIcon className="size-6 text-primary" /> Calendario
           </h1>
-          <p className="mt-1 text-gray-600">Visualiza y programa tus publicaciones.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Visualizá y programá tus publicaciones del mes.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center rounded-lg border border-gray-200 bg-white">
-            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-2 hover:bg-gray-50"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="px-3 text-sm font-semibold capitalize sm:px-4">{monthName}</span>
-            <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-2 hover:bg-gray-50"><ChevronRight className="h-4 w-4" /></button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center rounded-md border border-border bg-card shadow-xs">
+            <Button variant="ghost" size="icon-sm" onClick={goPrev} aria-label="Mes anterior">
+              <ChevronLeft className="size-4" />
+            </Button>
+            <span className="min-w-32 px-2 text-center text-sm font-medium capitalize text-foreground">
+              {monthName}
+            </span>
+            <Button variant="ghost" size="icon-sm" onClick={goNext} aria-label="Mes siguiente">
+              <ChevronRight className="size-4" />
+            </Button>
           </div>
-          <button onClick={() => router.push(`/${orgSlug}/calendar/new`)} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Plus className="h-4 w-4" /> Nuevo post
-          </button>
+          <Button variant="outline" size="sm" onClick={goToday}>
+            Hoy
+          </Button>
+          <Button variant="gradient" size="sm" onClick={() => router.push(`/${orgSlug}/calendar/new`)}>
+            <Plus className="size-4" />
+            Nuevo post
+          </Button>
         </div>
       </div>
 
-      {/* Scroll horizontal en móvil — un calendario de 7 cols no entra abajo de ~640px */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-            {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((d) => (
-              <div key={d} className="py-2 text-center text-xs font-semibold uppercase text-gray-500">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
-            {getDaysInMonth().map((day, i) => {
-              const dayPosts = day.isCurrentMonth ? getPostsForDay(day.date) : []
-              return (
-                <div key={i} className={`min-h-[90px] p-1.5 sm:min-h-[100px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs ${isToday(day.date) && day.isCurrentMonth ? 'bg-blue-600 font-bold text-white' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-300'}`}>{day.date}</span>
-                  <div className="mt-1 space-y-1">
-                    {dayPosts.slice(0, 3).map((post) => (
-                      <div key={post.id} className={`cursor-pointer truncate rounded px-1.5 py-0.5 text-xs hover:opacity-80 ${STATUS_COLORS[post.status] || 'bg-gray-100'}`}>
-                        <span className="font-medium">{post.scheduled_at && new Date(post.scheduled_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
-                        {' '}{post.post_variants.map((v) => PROVIDER_EMOJI[v.social_accounts?.provider || ''] || '').join(' ')}
-                        {' '}{post.title || (post.post_variants[0]?.content || '').slice(0, 20)}
-                      </div>
-                    ))}
-                    {dayPosts.length > 3 && <span className="text-xs text-gray-400">+{dayPosts.length - 3} mas</span>}
-                  </div>
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-7 border-b border-border bg-muted/50">
+              {DAYS.map((d) => (
+                <div
+                  key={d}
+                  className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  {d}
                 </div>
-              )
-            })}
+              ))}
+            </div>
+            <div className="grid grid-cols-7 divide-x divide-y divide-border">
+              {getDaysInMonth().map((day, i) => {
+                const dayPosts = day.isCurrentMonth ? getPostsForDay(day.date) : []
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      'min-h-[100px] p-1.5 sm:min-h-[110px]',
+                      day.isCurrentMonth ? 'bg-card' : 'bg-muted/30',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'inline-flex size-6 items-center justify-center rounded-full text-xs font-medium tabular-nums',
+                        isToday(day.date) && day.isCurrentMonth
+                          ? 'bg-primary text-primary-foreground font-semibold'
+                          : day.isCurrentMonth
+                            ? 'text-foreground'
+                            : 'text-muted-foreground/40',
+                      )}
+                    >
+                      {day.date}
+                    </span>
+                    <div className="mt-1 space-y-1">
+                      {dayPosts.slice(0, 3).map((post) => {
+                        const style = STATUS_STYLES[post.status] || STATUS_STYLES.draft
+                        const time =
+                          post.scheduled_at &&
+                          new Date(post.scheduled_at).toLocaleTimeString('es', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        const providers = Array.from(
+                          new Set(
+                            post.post_variants
+                              .map((v) => v.social_accounts?.provider)
+                              .filter(Boolean) as string[],
+                          ),
+                        )
+                        const preview = post.title || post.post_variants[0]?.content || ''
+                        return (
+                          <button
+                            key={post.id}
+                            type="button"
+                            className={cn(
+                              'group flex w-full items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-left text-[11px] transition-colors',
+                              style.bg,
+                              style.text,
+                              'hover:opacity-90',
+                            )}
+                          >
+                            <span className={cn('size-1.5 shrink-0 rounded-full', style.dot)} aria-hidden />
+                            {time && <span className="font-medium tabular-nums">{time}</span>}
+                            {providers.length > 0 && (
+                              <span className="font-medium tabular-nums">
+                                {providers.map((p) => PROVIDER_LABEL[p] || '').join(' ')}
+                              </span>
+                            )}
+                            <span className="truncate">{preview}</span>
+                          </button>
+                        )
+                      })}
+                      {dayPosts.length > 3 && (
+                        <span className="block text-[10px] text-muted-foreground">
+                          +{dayPosts.length - 3} más
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500">
-        {Object.entries(STATUS_COLORS).map(([status, className]) => (
-          <div key={status} className="flex items-center gap-1.5">
-            <span className={`inline-block h-3 w-3 rounded ${className.split(' ')[0]}`} />
-            {status}
-          </div>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(STATUS_STYLES).map(([status, style]) => (
+          <Badge key={status} variant="outline" className="gap-1.5 capitalize">
+            <span className={cn('size-1.5 rounded-full', style.dot)} aria-hidden />
+            {style.label}
+          </Badge>
         ))}
       </div>
     </div>

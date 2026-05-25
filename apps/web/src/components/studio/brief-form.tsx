@@ -82,36 +82,36 @@ export function BriefForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           Producto / oferta <span className="text-red-500">*</span>
         </label>
         <textarea
           value={brief.product}
           onChange={(e) => setBrief({ ...brief, product: e.target.value })}
           rows={3}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-blue-500"
           placeholder="Crema facial antioxidante con extracto de quinua. Empaque vidrio ámbar 50ml. Precio $39."
           required
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Audiencia objetivo</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Audiencia objetivo</label>
         <input
           value={brief.audience}
           onChange={(e) => setBrief({ ...brief, audience: e.target.value })}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-blue-500"
           placeholder="Mujeres 30-50 años, urbanas, interés en skincare natural"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Tono</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Tono</label>
           <select
             value={brief.tone}
             onChange={(e) => setBrief({ ...brief, tone: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
             {TONES.map((t) => (
               <option key={t} value={t}>
@@ -122,11 +122,11 @@ export function BriefForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Formato</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Formato</label>
           <select
             value={brief.format}
             onChange={(e) => setBrief({ ...brief, format: e.target.value as Brief['format'] })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           >
             {FORMATS.map((f) => (
               <option key={f.value} value={f.value}>
@@ -138,28 +138,28 @@ export function BriefForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Notas adicionales</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Notas adicionales</label>
         <textarea
           value={brief.notes}
           onChange={(e) => setBrief({ ...brief, notes: e.target.value })}
           rows={2}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-input px-3 py-2 text-sm"
           placeholder="Inspiración, claims a destacar, lo que NO querés mostrar..."
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Imágenes de referencia (opcional)</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Imágenes de referencia (opcional)</label>
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp"
           multiple
           disabled={uploading}
           onChange={(e) => handleFileChange(e.target.files)}
-          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-blue-100"
         />
         {uploading && (
-          <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" /> Subiendo...
           </p>
         )}
@@ -169,13 +169,13 @@ export function BriefForm({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
       )}
 
       <button
         type="submit"
         disabled={submitting || uploading}
-        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
       >
         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
         {submitLabel}

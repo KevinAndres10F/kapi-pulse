@@ -15,7 +15,7 @@ export function VideoPreview({
   label?: string
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-black">
+    <div className="overflow-hidden rounded-xl border border-border bg-black">
       <div className="relative aspect-[9/16] w-full max-w-xs bg-gray-900 sm:max-w-sm">
         {state === 'succeeded' && asset?.signed_url ? (
           <video
@@ -36,7 +36,7 @@ export function VideoPreview({
           </div>
         )}
       </div>
-      {label && <div className="border-t border-gray-200 bg-white p-2 text-xs text-gray-600">{label}</div>}
+      {label && <div className="border-t border-border bg-card p-2 text-xs text-muted-foreground">{label}</div>}
     </div>
   )
 }

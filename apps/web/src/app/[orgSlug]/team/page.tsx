@@ -1,9 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { UserPlus, Trash2, Mail } from 'lucide-react'
+import { Mail, Trash2, UserPlus, Users } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { createClient } from '@/lib/supabase/client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Member {
   user_id: string
@@ -20,6 +36,13 @@ interface Invitation {
   accepted_at: string | null
 }
 
+function roleVariant(role: string): 'default' | 'success' | 'muted' | 'secondary' {
+  if (role === 'owner') return 'default'
+  if (role === 'admin') return 'secondary'
+  if (role === 'editor') return 'success'
+  return 'muted'
+}
+
 export default function TeamPage() {
   const { orgSlug } = useParams<{ orgSlug: string }>()
   const [members, setMembers] = useState<Member[]>([])
@@ -29,11 +52,9 @@ export default function TeamPage() {
   const [inviteRole, setInviteRole] = useState<string>('editor')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const supabase = createClient()
 
   const loadData = useCallback(async () => {
-    // Obtener org ID
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
@@ -43,7 +64,6 @@ export default function TeamPage() {
     if (!org) return
     setOrgId(org.id)
 
-    // Cargar miembros
     const { data: membersData } = await supabase
       .from('organization_members')
       .select('user_id, role, joined_at, profiles(id, full_name, avatar_url)')
@@ -51,7 +71,6 @@ export default function TeamPage() {
 
     if (membersData) setMembers(membersData as unknown as Member[])
 
-    // Cargar invitaciones pendientes
     const { data: invitationsData } = await supabase
       .from('invitations')
       .select('id, email, role, expires_at, accepted_at')
@@ -62,148 +81,189 @@ export default function TeamPage() {
     if (invitationsData) setInvitations(invitationsData)
   }, [supabase, orgSlug])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setSuccess(null)
 
     if (!orgId) return
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    const { error: invError } = await supabase
-      .from('invitations')
-      .insert({
-        organization_id: orgId,
-        email: inviteEmail,
-        role: inviteRole,
-        invited_by: user?.id,
-      })
+    const { error: invError } = await supabase.from('invitations').insert({
+      organization_id: orgId,
+      email: inviteEmail,
+      role: inviteRole,
+      invited_by: user?.id,
+    })
 
     if (invError) {
-      setError('Error al crear la invitación. Verifica los permisos.')
+      setError('Error al crear la invitación. Verificá los permisos.')
       setLoading(false)
       return
     }
 
-    setSuccess(`Invitación enviada a ${inviteEmail}`)
+    toast.success(`Invitación enviada a ${inviteEmail}.`)
     setInviteEmail('')
     setLoading(false)
     loadData()
   }
 
   async function handleDeleteInvitation(invitationId: string) {
-    await supabase.from('invitations').delete().eq('id', invitationId)
-    loadData()
+    const { error } = await supabase.from('invitations').delete().eq('id', invitationId)
+    if (error) {
+      toast.error('No se pudo eliminar.', { description: error.message })
+    } else {
+      toast.success('Invitación cancelada.')
+      loadData()
+    }
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Equipo</h1>
-        <p className="mt-1 text-gray-600">Administra los miembros de tu organización.</p>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Users className="size-6 text-primary" />
+          Equipo
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Administrá los miembros de tu organización y sus permisos.
+        </p>
       </div>
 
-      {/* Formulario de invitación */}
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <UserPlus className="h-5 w-5" />
-          Invitar miembro
-        </h2>
-        <form onSubmit={handleInvite} className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="email"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="email@ejemplo.com"
-            required
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-          />
-          <div className="flex gap-3">
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 sm:flex-initial"
-            >
-              <option value="admin">Admin</option>
-              <option value="editor">Editor</option>
-              <option value="viewer">Viewer</option>
-            </select>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserPlus className="size-4 text-primary" />
+            Invitar miembro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="persona@ejemplo.com"
+                required
+              />
+            </div>
+            <div className="space-y-1.5 sm:w-40">
+              <Label htmlFor="role">Rol</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" loading={loading} variant="gradient">
+              {!loading && <Mail className="size-4" />}
               Invitar
-            </button>
-          </div>
-        </form>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
-      </div>
+            </Button>
+          </form>
+          {error && (
+            <Alert variant="destructive" className="mt-3">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Miembros actuales */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 p-4">
-          <h2 className="text-lg font-semibold text-gray-900">Miembros ({members.length})</h2>
-        </div>
-        <ul className="divide-y divide-gray-200">
-          {members.map((member) => (
-            <li key={member.user_id} className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
-                  {(member.profiles?.full_name || '?').charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{member.profiles?.full_name || 'Sin nombre'}</p>
-                  <p className="text-sm text-gray-500">Desde {new Date(member.joined_at).toLocaleDateString('es')}</p>
-                </div>
-              </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                member.role === 'owner' ? 'bg-purple-100 text-purple-700' :
-                member.role === 'admin' ? 'bg-blue-100 text-blue-700' :
-                member.role === 'editor' ? 'bg-green-100 text-green-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
-                {member.role}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Invitaciones pendientes */}
-      {invitations.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 p-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Invitaciones pendientes ({invitations.length})
-            </h2>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Miembros</CardTitle>
+            <Badge variant="muted">{members.length}</Badge>
           </div>
-          <ul className="divide-y divide-gray-200">
-            {invitations.map((inv) => (
-              <li key={inv.id} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-medium text-gray-900">{inv.email}</p>
-                  <p className="text-sm text-gray-500">
-                    Rol: {inv.role} · Expira: {new Date(inv.expires_at).toLocaleDateString('es')}
-                  </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ul className="divide-y divide-border">
+            {members.map((member) => (
+              <li key={member.user_id} className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar>
+                    <AvatarFallback>
+                      {(member.profiles?.full_name || '?').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {member.profiles?.full_name || 'Sin nombre'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Desde{' '}
+                      {new Date(member.joined_at).toLocaleDateString('es-EC', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteInvitation(inv.id)}
-                  className="rounded p-2 text-red-500 hover:bg-red-50"
-                  title="Cancelar invitación"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <Badge variant={roleVariant(member.role)} className="capitalize">
+                  {member.role}
+                </Badge>
               </li>
             ))}
+            {members.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Sin miembros todavía.
+              </li>
+            )}
           </ul>
-        </div>
+        </CardContent>
+      </Card>
+
+      {invitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Mail className="size-4 text-primary" />
+                Invitaciones pendientes
+              </CardTitle>
+              <Badge variant="warning">{invitations.length}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border">
+              {invitations.map((inv) => (
+                <li key={inv.id} className="flex items-center justify-between p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{inv.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Rol <span className="capitalize">{inv.role}</span> · expira{' '}
+                      {new Date(inv.expires_at).toLocaleDateString('es-EC')}
+                    </p>
+                  </div>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => handleDeleteInvitation(inv.id)}
+                    aria-label="Cancelar invitación"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

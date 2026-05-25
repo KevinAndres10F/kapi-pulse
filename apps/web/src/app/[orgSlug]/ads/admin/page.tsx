@@ -4,32 +4,51 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ShieldAlert,
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  XCircle,
-  Play,
-  Pause,
-  Loader2,
   ExternalLink,
-  AlertTriangle,
+  Loader2,
+  Pause,
+  Play,
+  ShieldAlert,
+  XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
+
 import { createClient } from '@/lib/supabase/client'
 import {
-  listPending,
-  listCampaigns,
   approveCampaign,
-  rejectCampaign,
-  launchCampaign,
-  pauseCampaign,
-  type PendingCampaign,
-  type AdCampaign,
   formatMoney,
-  statusLabel,
+  launchCampaign,
+  listCampaigns,
+  listPending,
   objectiveLabel,
+  pauseCampaign,
+  rejectCampaign,
+  statusLabel,
+  type AdCampaign,
+  type PendingCampaign,
 } from '@/lib/ads/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 type ActionState = { type: 'approving' | 'rejecting' | 'launching' | 'pausing'; id: string } | null
+type ActionType = 'approving' | 'rejecting' | 'launching' | 'pausing'
+
+function statusVariant(status: string): 'muted' | 'default' | 'success' | 'destructive' | 'warning' | 'secondary' {
+  switch (status) {
+    case 'draft': return 'muted'
+    case 'pending_approval': return 'warning'
+    case 'approved': return 'secondary'
+    case 'active': return 'success'
+    case 'paused': return 'muted'
+    case 'rejected': return 'destructive'
+    default: return 'default'
+  }
+}
 
 export default function AdsAdminPage() {
   const params = useParams<{ orgSlug: string }>()
@@ -58,9 +77,7 @@ export default function AdsAdminPage() {
       if (cancelled || !org) return
       setOrgId((org as { id: string }).id)
     })()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [params.orgSlug, supabase])
 
   const load = useCallback(async () => {
@@ -68,7 +85,6 @@ export default function AdsAdminPage() {
     setLoading(true)
     setError(null)
     try {
-      // pending = global (admin); approved/active = de cualquier org admin
       const [p, ap, ac] = await Promise.all([
         listPending(userId),
         listCampaigns(orgId, userId, 'approved'),
@@ -79,38 +95,28 @@ export default function AdsAdminPage() {
       setActive(ac.campaigns)
     } catch (e) {
       const err = e as Error & { status?: number }
-      if (err.status === 403) {
-        setForbidden(true)
-      } else {
-        setError(err.message)
-      }
+      if (err.status === 403) setForbidden(true)
+      else setError(err.message)
     } finally {
       setLoading(false)
     }
   }, [userId, orgId])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   async function handleApprove(id: string, name: string) {
     if (!userId) return
-    if (
-      !confirm(
-        `Aprobar "${name}"?\n\nEsto va a CREAR la campaña en Meta Ads Manager con status PAUSED. No empieza a gastar hasta que la lances.`,
-      )
-    )
-      return
+    if (!confirm(`Aprobar "${name}"?\n\nCrea en Meta como PAUSED. No empieza a gastar hasta lanzarla.`)) return
     setAction({ type: 'approving', id })
     try {
       const result = await approveCampaign(id, userId)
-      alert(
-        `✅ Aprobada\n\nIDs en Meta:\nCampaign: ${result.meta.campaignId}\nAdSet: ${result.meta.adSetId}\nCreative: ${result.meta.creativeId}\nAd: ${result.meta.adId}`,
-      )
+      toast.success('Aprobada', {
+        description: `Meta Campaign: ${result.meta.campaignId}`,
+      })
       await load()
     } catch (e) {
       const err = e as Error & { details?: unknown }
-      alert(`❌ Error: ${err.message}\n\n${JSON.stringify(err.details, null, 2)}`)
+      toast.error('Error aprobando', { description: err.message })
     } finally {
       setAction(null)
     }
@@ -123,9 +129,10 @@ export default function AdsAdminPage() {
     setAction({ type: 'rejecting', id })
     try {
       await rejectCampaign(id, reason, userId)
+      toast.success('Campaña rechazada.')
       await load()
     } catch (e) {
-      alert(`Error: ${e instanceof Error ? e.message : 'desconocido'}`)
+      toast.error('Error rechazando', { description: e instanceof Error ? e.message : 'desconocido' })
     } finally {
       setAction(null)
     }
@@ -133,18 +140,14 @@ export default function AdsAdminPage() {
 
   async function handleLaunch(id: string, name: string) {
     if (!userId) return
-    if (
-      !confirm(
-        `⚠️ LANZAR "${name}" en Meta?\n\nLa campaña pasará a ACTIVE y EMPEZARÁ A GASTAR el presupuesto diario.\n\n¿Confirmar?`,
-      )
-    )
-      return
+    if (!confirm(`⚠️ LANZAR "${name}" en Meta?\n\nPasa a ACTIVE y empieza a gastar el presupuesto diario.`)) return
     setAction({ type: 'launching', id })
     try {
       await launchCampaign(id, userId)
+      toast.success('Campaña lanzada.')
       await load()
     } catch (e) {
-      alert(`Error: ${e instanceof Error ? e.message : 'desconocido'}`)
+      toast.error('Error lanzando', { description: e instanceof Error ? e.message : 'desconocido' })
     } finally {
       setAction(null)
     }
@@ -156,9 +159,10 @@ export default function AdsAdminPage() {
     setAction({ type: 'pausing', id })
     try {
       await pauseCampaign(id, userId)
+      toast.success('Campaña pausada.')
       await load()
     } catch (e) {
-      alert(`Error: ${e instanceof Error ? e.message : 'desconocido'}`)
+      toast.error('Error pausando', { description: e instanceof Error ? e.message : 'desconocido' })
     } finally {
       setAction(null)
     }
@@ -166,28 +170,33 @@ export default function AdsAdminPage() {
 
   if (forbidden) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <ShieldAlert className="mx-auto h-10 w-10 text-red-400" />
-        <h2 className="mt-3 font-semibold text-red-900">No tienes acceso</h2>
-        <p className="mt-1 text-sm text-red-700">
-          Esta vista es solo para owner/admin de la organización operadora (KAPI).
-        </p>
-        <Link
-          href={`/${params.orgSlug}/ads`}
-          className="mt-4 inline-flex items-center gap-1 text-sm text-red-600 underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Link>
-      </div>
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <ShieldAlert className="size-6 text-destructive" />
+          </span>
+          <div>
+            <p className="text-base font-semibold text-foreground">No tenés acceso</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Esta vista es solo para owner/admin de la organización operadora (KAPI).
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${params.orgSlug}/ads`}>
+              <ArrowLeft className="size-4" />
+              Volver
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
   if (!userId || !orgId || loading) {
     return (
-      <div className="flex items-center gap-2 text-gray-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Cargando...
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Cargando…
       </div>
     )
   }
@@ -195,162 +204,175 @@ export default function AdsAdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver a mis campañas
-        </Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <ShieldAlert className="h-6 w-6 text-purple-600" />
-          Panel admin — Aprobaciones
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link href={`/${params.orgSlug}/ads`}>
+            <ArrowLeft className="size-4" />
+            Volver a mis campañas
+          </Link>
+        </Button>
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <ShieldAlert className="size-6 text-primary" />
+          Panel admin · Aprobaciones
         </h1>
-        <p className="mt-1 text-gray-600">
-          Acciones que afectan Meta directamente. Aprobar crea en PAUSED, Lanzar pasa a ACTIVE y empieza a gastar.
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          Aprobar crea la campaña en PAUSED. Lanzar la pasa a ACTIVE y empieza a gastar.
         </p>
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Pendientes */}
-      <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
-          Pendientes de aprobación ({pending.length})
-        </h2>
-        {pending.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
-            No hay campañas en cola.
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Pendientes de aprobación</CardTitle>
+              <CardDescription>Campañas enviadas por clientes esperando revisión.</CardDescription>
+            </div>
+            <Badge variant={pending.length > 0 ? 'warning' : 'muted'}>{pending.length}</Badge>
           </div>
-        ) : (
-          <ul className="space-y-3">
-            {pending.map((c) => {
-              const budget = c.daily_budget_cents
-                ? `${formatMoney(c.daily_budget_cents, c.currency)}/día`
-                : c.lifetime_budget_cents
-                  ? `${formatMoney(c.lifetime_budget_cents, c.currency)} total`
-                  : '—'
-              const isThis = action?.id === c.id
-              return (
-                <li
+        </CardHeader>
+        <CardContent className="p-0">
+          {pending.length === 0 ? (
+            <p className="px-6 py-10 text-center text-sm text-muted-foreground">No hay campañas en cola.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {pending.map((c) => {
+                const budget = c.daily_budget_cents
+                  ? `${formatMoney(c.daily_budget_cents, c.currency)}/día`
+                  : c.lifetime_budget_cents
+                    ? `${formatMoney(c.lifetime_budget_cents, c.currency)} total`
+                    : '—'
+                const isThis = action?.id === c.id
+                return (
+                  <li key={c.id} className="px-6 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground">{c.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {objectiveLabel(c.objective)} · {budget} ·{' '}
+                          <span className="font-mono text-xs">{c.meta_ad_account_id}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Enviada {new Date(c.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReject(c.id, c.name)}
+                          disabled={!!action}
+                          loading={isThis && action?.type === 'rejecting'}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          {!(isThis && action?.type === 'rejecting') && <XCircle className="size-3.5" />}
+                          Rechazar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleApprove(c.id, c.name)}
+                          disabled={!!action}
+                          loading={isThis && action?.type === 'approving'}
+                        >
+                          {!(isThis && action?.type === 'approving') && <CheckCircle2 className="size-3.5" />}
+                          Aprobar (PAUSED)
+                        </Button>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Aprobadas · listas para lanzar</CardTitle>
+              <CardDescription>Creadas en Meta como PAUSED. No gastan hasta lanzar.</CardDescription>
+            </div>
+            <Badge variant="secondary">{approved.length}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {approved.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-muted-foreground">
+              Ninguna campaña aprobada en esta org.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {approved.map((c) => (
+                <CampaignRow
                   key={c.id}
-                  className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{c.name}</p>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {objectiveLabel(c.objective)} · {budget} · cuenta {c.meta_ad_account_id}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Enviada {new Date(c.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex flex-shrink-0 gap-2">
-                      <button
-                        onClick={() => handleReject(c.id, c.name)}
-                        disabled={!!action}
-                        className="flex items-center gap-1 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {isThis && action?.type === 'rejecting' ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <XCircle className="h-3 w-3" />
-                        )}
-                        Rechazar
-                      </button>
-                      <button
-                        onClick={() => handleApprove(c.id, c.name)}
-                        disabled={!!action}
-                        className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {isThis && action?.type === 'approving' ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="h-3 w-3" />
-                        )}
-                        Aprobar (PAUSED)
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+                  campaign={c}
+                  action={action?.id === c.id ? action.type : null}
+                  buttons={[
+                    {
+                      label: 'Lanzar (ACTIVE)',
+                      icon: Play,
+                      onClick: () => handleLaunch(c.id, c.name),
+                      variant: 'gradient',
+                      actionType: 'launching',
+                    },
+                  ]}
+                />
+              ))}
+            </ul>
+          )}
+          {approved.length > 0 && (
+            <Alert variant="warning" className="mx-6 my-4">
+              <AlertTriangle className="size-4" />
+              <AlertDescription>
+                Al lanzar, la campaña empieza a gastar el presupuesto diario inmediatamente.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Aprobadas (listas para lanzar) */}
-      <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
-          Aprobadas — listas para lanzar ({approved.length})
-        </h2>
-        {approved.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-6 text-center text-sm text-gray-500">
-            Ninguna campaña aprobada en esta org.
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Activas</CardTitle>
+              <CardDescription>Campañas corriendo y gastando ahora mismo.</CardDescription>
+            </div>
+            <Badge variant="success">{active.length}</Badge>
           </div>
-        ) : (
-          <ul className="space-y-2">
-            {approved.map((c) => (
-              <CampaignRow
-                key={c.id}
-                campaign={c}
-                action={action?.id === c.id ? action.type : null}
-                buttons={[
-                  {
-                    label: 'Lanzar (ACTIVE)',
-                    icon: Play,
-                    onClick: () => handleLaunch(c.id, c.name),
-                    color: 'green',
-                    actionType: 'launching',
-                  },
-                ]}
-              />
-            ))}
-          </ul>
-        )}
-        {approved.length > 0 && (
-          <p className="mt-2 flex items-center gap-1 text-xs text-yellow-700">
-            <AlertTriangle className="h-3 w-3" />
-            Al lanzar, la campaña empieza a gastar el presupuesto diario inmediatamente.
-          </p>
-        )}
-      </section>
-
-      {/* Activas */}
-      <section>
-        <h2 className="mb-3 font-semibold text-gray-900">
-          Activas ({active.length})
-        </h2>
-        {active.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white py-6 text-center text-sm text-gray-500">
-            Ninguna campaña activa.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {active.map((c) => (
-              <CampaignRow
-                key={c.id}
-                campaign={c}
-                action={action?.id === c.id ? action.type : null}
-                buttons={[
-                  {
-                    label: 'Pausar',
-                    icon: Pause,
-                    onClick: () => handlePause(c.id, c.name),
-                    color: 'orange',
-                    actionType: 'pausing',
-                  },
-                ]}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
+        </CardHeader>
+        <CardContent className="p-0">
+          {active.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-muted-foreground">Ninguna campaña activa.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {active.map((c) => (
+                <CampaignRow
+                  key={c.id}
+                  campaign={c}
+                  action={action?.id === c.id ? action.type : null}
+                  buttons={[
+                    {
+                      label: 'Pausar',
+                      icon: Pause,
+                      onClick: () => handlePause(c.id, c.name),
+                      variant: 'secondary',
+                      actionType: 'pausing',
+                    },
+                  ]}
+                />
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -359,11 +381,9 @@ interface ActionBtn {
   label: string
   icon: typeof Play
   onClick: () => void
-  color: 'green' | 'orange' | 'red' | 'blue'
-  actionType: 'approving' | 'rejecting' | 'launching' | 'pausing'
+  variant: 'default' | 'gradient' | 'outline' | 'destructive' | 'secondary'
+  actionType: ActionType
 }
-
-type ActionType = 'approving' | 'rejecting' | 'launching' | 'pausing'
 
 function CampaignRow({
   campaign,
@@ -378,24 +398,16 @@ function CampaignRow({
   const budget = campaign.daily_budget_cents
     ? `${formatMoney(campaign.daily_budget_cents, campaign.ad_accounts?.currency || 'USD')}/día`
     : '—'
-  const colorMap = {
-    green: 'bg-green-600 hover:bg-green-700 text-white',
-    orange: 'bg-orange-500 hover:bg-orange-600 text-white',
-    red: 'bg-red-600 hover:bg-red-700 text-white',
-    blue: 'bg-blue-600 hover:bg-blue-700 text-white',
-  } as const
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-4">
+    <li className="px-6 py-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900">{campaign.name}</p>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.color}`}>
-              {st.label}
-            </span>
+            <p className="font-medium text-foreground">{campaign.name}</p>
+            <Badge variant={statusVariant(campaign.status)}>{st.label}</Badge>
           </div>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {objectiveLabel(campaign.objective)} · {budget}
             {campaign.meta_campaign_id && (
               <>
@@ -404,28 +416,30 @@ function CampaignRow({
                   href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?selected_campaign_ids=${campaign.meta_campaign_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 text-blue-600 hover:underline"
+                  className="inline-flex items-center gap-0.5 text-primary hover:underline"
                 >
-                  Meta <ExternalLink className="h-3 w-3" />
+                  Meta <ExternalLink className="size-3" />
                 </a>
               </>
             )}
           </p>
         </div>
-        <div className="flex flex-shrink-0 gap-2">
+        <div className="flex shrink-0 gap-2">
           {buttons.map((b) => {
             const Icon = b.icon
             const isLoading = action === b.actionType
             return (
-              <button
+              <Button
                 key={b.label}
+                size="sm"
+                variant={b.variant}
                 onClick={b.onClick}
                 disabled={!!action}
-                className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${colorMap[b.color]}`}
+                loading={isLoading}
               >
-                {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Icon className="h-3 w-3" />}
+                {!isLoading && <Icon className="size-3.5" />}
                 {b.label}
-              </button>
+              </Button>
             )
           })}
         </div>
