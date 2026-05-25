@@ -1,8 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+
+import { createClient } from '@/lib/supabase/client'
+import { AuthShell } from '@/components/auth/auth-shell'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const TIMEZONES = [
   'America/Guayaquil',
@@ -24,10 +38,11 @@ export default function OnboardingPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Verificar si ya tiene una org, redirigir al dashboard
   useEffect(() => {
     async function checkOrgs() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
         return
@@ -74,24 +89,26 @@ export default function OnboardingPage() {
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
-      setError('Sesión expirada. Vuelve a iniciar sesión.')
+      setError('Sesión expirada. Volvé a iniciar sesión.')
       setLoading(false)
       return
     }
 
-    // Crear org + membership owner atómicamente via RPC (evita race con RLS).
-    const { data: org, error: orgError } = await supabase.rpc(
-      'create_organization_with_owner',
-      { p_name: name, p_slug: slug, p_timezone: timezone },
-    )
+    const { data: org, error: orgError } = await supabase.rpc('create_organization_with_owner', {
+      p_name: name,
+      p_slug: slug,
+      p_timezone: timezone,
+    })
 
     if (orgError) {
       if (orgError.code === '23505') {
-        setError('Ya existe una organización con ese nombre. Elige otro.')
+        setError('Ya existe una organización con ese nombre. Elegí otro.')
       } else {
-        setError(orgError.message || 'Error al crear la organización. Intenta de nuevo.')
+        setError(orgError.message || 'Error al crear la organización. Probá de nuevo.')
       }
       setLoading(false)
       return
@@ -102,83 +119,78 @@ export default function OnboardingPage() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          <span className="text-sm">Verificando tu cuenta...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-lg space-y-8 rounded-xl bg-white p-8 shadow-lg">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Crea tu organización</h1>
-          <p className="mt-2 text-gray-600">
-            Configura tu espacio de trabajo para gestionar redes sociales.
-          </p>
+    <AuthShell
+      title="Creá tu organización"
+      description="Configurá tu espacio de trabajo. Vas a poder invitar a tu equipo después."
+    >
+      <form onSubmit={handleCreate} className="space-y-5">
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Nombre de la organización</Label>
+          <Input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            required
+            placeholder="Mi Empresa"
+            autoComplete="organization"
+          />
         </div>
 
-        <form onSubmit={handleCreate} className="space-y-5">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Nombre de la organización
-            </label>
+        <div className="space-y-1.5">
+          <Label htmlFor="slug">URL del espacio</Label>
+          <div className="flex items-stretch overflow-hidden rounded-md border border-input bg-background shadow-xs focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
+            <span className="flex items-center bg-muted px-3 text-xs text-muted-foreground">kapi-pulse.com/</span>
             <input
-              id="name"
+              id="slug"
               type="text"
-              value={name}
-              onChange={(e) => handleNameChange(e.target.value)}
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               required
-              className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              placeholder="Mi Empresa"
+              className="w-full bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+              placeholder="mi-empresa"
+              autoComplete="off"
             />
           </div>
+          <p className="text-xs text-muted-foreground">Solo letras minúsculas, números y guiones.</p>
+        </div>
 
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
-              URL del espacio
-            </label>
-            <div className="mt-1 flex items-center rounded-lg border border-gray-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
-              <span className="px-3 text-sm text-gray-500">kapi-pulse.com/</span>
-              <input
-                id="slug"
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                required
-                className="w-full rounded-r-lg border-0 px-2 py-2 focus:outline-none"
-                placeholder="mi-empresa"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">
-              Zona horaria
-            </label>
-            <select
-              id="timezone"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            >
+        <div className="space-y-1.5">
+          <Label htmlFor="timezone">Zona horaria</Label>
+          <Select value={timezone} onValueChange={setTimezone}>
+            <SelectTrigger id="timezone">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>{tz.replace('America/', '')}</option>
+                <SelectItem key={tz} value={tz}>
+                  {tz.replace('America/', '')}
+                </SelectItem>
               ))}
-            </select>
-          </div>
+            </SelectContent>
+          </Select>
+        </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Creando...' : 'Crear organización'}
-          </button>
-        </form>
-      </div>
-    </div>
+        <Button type="submit" loading={loading} className="w-full" size="lg">
+          {loading ? 'Creando organización' : 'Crear organización'}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }
