@@ -12,18 +12,32 @@ export default async function CreditsPage({ params }: Props) {
   const supabase = await createServerSupabaseClient()
   if (!supabase) redirect('/')
 
+  // Layout already validates org membership; we only need id + plan_id here.
+  // Keep the join out of this query so an RLS miss on `plans` can't null the
+  // entire row and trigger the redirect below.
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, plan_id, plans:plan_id(code, name, monthly_credits, bonus_credits)')
+    .select('id, plan_id')
     .eq('slug', orgSlug)
     .single()
   if (!org) redirect('/onboarding')
 
-  const { data: credits } = await supabase
-    .from('organization_credits')
-    .select('balance, total_granted, total_consumed, last_reset_at')
-    .eq('organization_id', org.id)
-    .maybeSingle()
+  // Fetch credits and plan in parallel; plan is optional (maybeSingle so it
+  // never throws even when plan_id is null or RLS blocks reads).
+  const [{ data: credits }, { data: plan }] = await Promise.all([
+    supabase
+      .from('organization_credits')
+      .select('balance, total_granted, total_consumed, last_reset_at')
+      .eq('organization_id', org.id)
+      .maybeSingle(),
+    org.plan_id
+      ? supabase
+          .from('plans')
+          .select('code, name, monthly_credits, bonus_credits')
+          .eq('id', org.plan_id as string)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   return (
     <div className="space-y-6">
@@ -41,7 +55,7 @@ export default async function CreditsPage({ params }: Props) {
         totalGranted={(credits?.total_granted as number) ?? 0}
         totalConsumed={(credits?.total_consumed as number) ?? 0}
         plan={
-          (org.plans as unknown as { code: string; name: string; monthly_credits: number; bonus_credits: number } | null) ||
+          (plan as unknown as { code: string; name: string; monthly_credits: number; bonus_credits: number } | null) ||
           null
         }
       />
