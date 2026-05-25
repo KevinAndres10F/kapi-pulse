@@ -243,8 +243,15 @@ export default function NewPostPage() {
   }
 
   function applyAISuggestion(s: { content: string; hashtags: string[] }) {
-    updateVariant(activeTab, 'content', s.content)
-    updateVariant(activeTab, 'hashtags', s.hashtags.join(', '))
+    setVariants((prev) => {
+      const updated = [...prev]
+      updated[activeTab] = {
+        ...updated[activeTab],
+        content: s.content,
+        hashtags: s.hashtags.join(', '),
+      }
+      return updated
+    })
     setAiOpen(false)
     setAiSuggestions([])
     setAiTopic('')
@@ -302,9 +309,11 @@ export default function NewPostPage() {
   }
 
   function updateVariant(index: number, field: keyof Variant, value: string) {
-    const updated = [...variants]
-    updated[index] = { ...updated[index], [field]: value }
-    setVariants(updated)
+    setVariants((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
   }
 
   async function handleSave(asDraft: boolean) {
