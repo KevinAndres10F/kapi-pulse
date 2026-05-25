@@ -1,14 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Wand2, Search, Copy, Check, Loader2, AlertCircle } from 'lucide-react'
+import { Check, Copy, Loader2, Lightbulb, Search, Sparkles, Wand2 } from 'lucide-react'
+import { toast } from 'sonner'
 
-// Llamamos directo al API (no via Netlify proxy) porque Claude puede tardar
-// >26s y el proxy CDN de Netlify timea con 504 HTML. El API tiene que tener
-// el origen del front en ALLOWED_ORIGINS para que CORS pase.
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-async function parseJsonOr(res: Response): Promise<{ data: any; error: string | null }> {
+async function parseJsonOr(
+  res: Response,
+): Promise<{ data: any; error: string | null }> {
   const text = await res.text()
   try {
     return { data: JSON.parse(text), error: null }
@@ -17,7 +33,7 @@ async function parseJsonOr(res: Response): Promise<{ data: any; error: string | 
     return {
       data: null,
       error: `Respuesta no-JSON del API (HTTP ${res.status}). ${
-        res.status >= 500 ? 'Servidor caido o timeout.' : 'Endpoint inexistente?'
+        res.status >= 500 ? 'Servidor caído o timeout.' : 'Endpoint inexistente?'
       } Snippet: "${snippet}..."`,
     }
   }
@@ -34,75 +50,58 @@ const PLATFORMS = [
 ] as const
 
 type Platform = (typeof PLATFORMS)[number]['value']
-type Tab = 'generate' | 'improve' | 'analyze'
 
 export default function AIPage() {
-  const [tab, setTab] = useState<Tab>('generate')
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" />
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Sparkles className="size-6 text-primary" />
           IA Editorial
         </h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Generá contenido, mejorá textos existentes y analizá competidores con Claude.
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-border">
-        <TabButton active={tab === 'generate'} onClick={() => setTab('generate')} icon={<Sparkles className="h-4 w-4" />}>
-          Generar
-        </TabButton>
-        <TabButton active={tab === 'improve'} onClick={() => setTab('improve')} icon={<Wand2 className="h-4 w-4" />}>
-          Mejorar
-        </TabButton>
-        <TabButton active={tab === 'analyze'} onClick={() => setTab('analyze')} icon={<Search className="h-4 w-4" />}>
-          Analizar competidor
-        </TabButton>
-      </div>
+      <Tabs defaultValue="generate">
+        <TabsList>
+          <TabsTrigger value="generate">
+            <Sparkles className="size-4" />
+            Generar
+          </TabsTrigger>
+          <TabsTrigger value="improve">
+            <Wand2 className="size-4" />
+            Mejorar
+          </TabsTrigger>
+          <TabsTrigger value="analyze">
+            <Search className="size-4" />
+            Analizar competidor
+          </TabsTrigger>
+        </TabsList>
 
-      {tab === 'generate' && <GenerateTab />}
-      {tab === 'improve' && <ImproveTab />}
-      {tab === 'analyze' && <AnalyzeTab />}
+        <TabsContent value="generate">
+          <GenerateTab />
+        </TabsContent>
+        <TabsContent value="improve">
+          <ImproveTab />
+        </TabsContent>
+        <TabsContent value="analyze">
+          <AnalyzeTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
 
-function TabButton({
-  active,
-  onClick,
-  icon,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? 'border-b-2 border-blue-600 text-primary'
-          : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
+// ============== Generar ==============
 
-// ============== Tab: Generar ==============
 function GenerateTab() {
   const [topic, setTopic] = useState('')
   const [platform, setPlatform] = useState<Platform>('linkedin')
   const [tone, setTone] = useState('profesional, cercano')
   const [context, setContext] = useState('')
-  const [nVariants, setNVariants] = useState(3)
+  const [nVariants, setNVariants] = useState('3')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [variants, setVariants] = useState<
@@ -127,25 +126,15 @@ function GenerateTab() {
           platform,
           tone,
           context: context || undefined,
-          n_variants: nVariants,
+          n_variants: Number(nVariants),
         }),
       })
       const { data, error: parseErr } = await parseJsonOr(res)
-      if (parseErr) {
-        setError(parseErr)
-        return
-      }
-      if (!res.ok) {
-        setError(data.error?.detail || data.error || `Error ${res.status}`)
-        return
-      }
+      if (parseErr) return setError(parseErr)
+      if (!res.ok) return setError(data.error?.detail || data.error || `Error ${res.status}`)
       setVariants(data.variants || [])
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `No se pudo conectar con la API: ${err.message}`
-          : 'Error de red',
-      )
+      setError(err instanceof Error ? `No se pudo conectar: ${err.message}` : 'Error de red')
     } finally {
       setLoading(false)
     }
@@ -153,101 +142,110 @@ function GenerateTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
-        <h2 className="font-semibold text-foreground">Sobre qué querés escribir</h2>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground">Tema o idea</label>
-          <textarea
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            placeholder="Ej: Lanzamiento de nuestra nueva línea de productos sustentables hecha por mujeres artesanas del Ecuador"
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-foreground">Red social</label>
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value as Platform)}
-              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sobre qué querés escribir</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="topic">Tema o idea</Label>
+            <Textarea
+              id="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="Ej: Lanzamiento de nuestra nueva línea sustentable hecha por artesanas ecuatorianas..."
+            />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground">Variantes</label>
-            <select
-              value={nVariants}
-              onChange={(e) => setNVariants(Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-            >
-              {[2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="platform">Red social</Label>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                <SelectTrigger id="platform">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLATFORMS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="n">Variantes</Label>
+              <Select value={nVariants} onValueChange={setNVariants}>
+                <SelectTrigger id="n">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-foreground">Tono</label>
-          <input
-            type="text"
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-            maxLength={200}
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tone">Tono</Label>
+            <Input
+              id="tone"
+              type="text"
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              maxLength={200}
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-foreground">
-            Contexto de marca / audiencia <span className="text-muted-foreground">(opcional)</span>
-          </label>
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            rows={2}
-            maxLength={2000}
-            placeholder="Ej: Somos KAPI, agencia de marketing en Quito. Audiencia: PyMEs ecuatorianas."
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="context">
+              Contexto de marca / audiencia <span className="text-muted-foreground">(opcional)</span>
+            </Label>
+            <Textarea
+              id="context"
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+              rows={2}
+              maxLength={2000}
+              placeholder="Ej: Somos KAPI, agencia de marketing en Quito. Audiencia: PyMEs ecuatorianas."
+            />
+          </div>
 
-        {error && <ErrorBox message={error} />}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {loading ? 'Generando con Claude...' : 'Generar variantes'}
-        </button>
-      </div>
+          <Button onClick={handleGenerate} loading={loading} disabled={loading} variant="gradient" className="w-full">
+            {!loading && <Sparkles className="size-4" />}
+            {loading ? 'Generando con Claude' : 'Generar variantes'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         {loading && (
-          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
-            <p className="mt-2 text-sm">Claude está pensando...</p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-sm">Claude está pensando…</p>
+            </CardContent>
+          </Card>
         )}
         {!loading && variants.length === 0 && (
-          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-12 text-center text-muted-foreground">
-            <Sparkles className="mx-auto h-8 w-8" />
-            <p className="mt-2 text-sm">Las variantes aparecerán acá.</p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
+              <Sparkles className="size-8" />
+              <p className="text-sm">Las variantes aparecerán acá.</p>
+            </CardContent>
+          </Card>
         )}
         {variants.map((v, i) => (
           <VariantCard key={i} index={i} variant={v} />
@@ -270,37 +268,37 @@ function VariantCard({
   async function copy() {
     await navigator.clipboard.writeText(fullText)
     setCopied(true)
+    toast.success('Copiado al portapapeles.')
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-primary">
-          Variante {index + 1}
-        </span>
-        <button
-          onClick={copy}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? 'Copiado' : 'Copiar'}
-        </button>
-      </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{variant.content}</p>
-      {variant.hashtags.length > 0 && (
-        <p className="mt-3 text-sm text-primary">
-          {variant.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
-        </p>
-      )}
-      <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
-        💡 {variant.rationale}
-      </div>
-    </div>
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        <div className="flex items-center justify-between">
+          <Badge>Variante {index + 1}</Badge>
+          <Button variant="ghost" size="sm" onClick={copy} className="gap-1.5">
+            {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+            {copied ? 'Copiado' : 'Copiar'}
+          </Button>
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{variant.content}</p>
+        {variant.hashtags.length > 0 && (
+          <p className="text-sm text-primary">
+            {variant.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
+          </p>
+        )}
+        <Alert variant="info" className="py-2">
+          <Lightbulb className="size-4" />
+          <AlertDescription className="text-xs italic">{variant.rationale}</AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
   )
 }
 
-// ============== Tab: Mejorar ==============
+// ============== Mejorar ==============
+
 function ImproveTab() {
   const [text, setText] = useState('')
   const [platform, setPlatform] = useState<Platform | ''>('')
@@ -332,21 +330,11 @@ function ImproveTab() {
         }),
       })
       const { data, error: parseErr } = await parseJsonOr(res)
-      if (parseErr) {
-        setError(parseErr)
-        return
-      }
-      if (!res.ok) {
-        setError(data.error?.detail || data.error || `Error ${res.status}`)
-        return
-      }
+      if (parseErr) return setError(parseErr)
+      if (!res.ok) return setError(data.error?.detail || data.error || `Error ${res.status}`)
       setResult({ analysis: data.analysis, variants: data.variants })
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `No se pudo conectar con la API: ${err.message}`
-          : 'Error de red',
-      )
+      setError(err instanceof Error ? `No se pudo conectar: ${err.message}` : 'Error de red')
     } finally {
       setLoading(false)
     }
@@ -354,81 +342,91 @@ function ImproveTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
-        <h2 className="font-semibold text-foreground">Texto a mejorar</h2>
-
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-          maxLength={5000}
-          placeholder="Pegá acá el texto que querés mejorar..."
-          className="w-full rounded-lg border border-input px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
-        />
-
-        <div>
-          <label className="block text-sm font-medium text-foreground">
-            Red social <span className="text-muted-foreground">(opcional, Claude la detecta si no la indicás)</span>
-          </label>
-          <select
-            value={platform}
-            onChange={(e) => setPlatform(e.target.value as Platform | '')}
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-          >
-            <option value="">— Auto-detectar —</option>
-            {PLATFORMS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground">
-            Qué querés mejorar <span className="text-muted-foreground">(opcional)</span>
-          </label>
-          <input
-            type="text"
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            maxLength={500}
-            placeholder="Ej: que sea más corto, gancho más fuerte, tono más casual..."
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Texto a mejorar</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={8}
+            maxLength={5000}
+            placeholder="Pegá acá el texto que querés mejorar…"
           />
-        </div>
 
-        {error && <ErrorBox message={error} />}
+          <div className="space-y-1.5">
+            <Label htmlFor="platform2">
+              Red social <span className="text-muted-foreground">(opcional)</span>
+            </Label>
+            <Select value={platform || 'auto'} onValueChange={(v) => setPlatform(v === 'auto' ? '' : (v as Platform))}>
+              <SelectTrigger id="platform2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto-detectar</SelectItem>
+                {PLATFORMS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <button
-          onClick={handleImprove}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-          {loading ? 'Mejorando...' : 'Mejorar texto'}
-        </button>
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="goal">
+              Qué querés mejorar <span className="text-muted-foreground">(opcional)</span>
+            </Label>
+            <Input
+              id="goal"
+              type="text"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              maxLength={500}
+              placeholder="Más corto, gancho más fuerte, tono casual…"
+            />
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button onClick={handleImprove} loading={loading} disabled={loading} variant="gradient" className="w-full">
+            {!loading && <Wand2 className="size-4" />}
+            {loading ? 'Mejorando' : 'Mejorar texto'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         {loading && (
-          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
-            <p className="mt-2 text-sm">Claude está pensando...</p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-sm">Claude está pensando…</p>
+            </CardContent>
+          </Card>
         )}
         {!loading && !result && (
-          <div className="rounded-lg border border-dashed border-input bg-muted/40 p-12 text-center text-muted-foreground">
-            <Wand2 className="mx-auto h-8 w-8" />
-            <p className="mt-2 text-sm">Las versiones mejoradas aparecerán acá.</p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
+              <Wand2 className="size-8" />
+              <p className="text-sm">Las versiones mejoradas aparecerán acá.</p>
+            </CardContent>
+          </Card>
         )}
         {result && (
           <>
-            <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-900">Diagnóstico:</p>
-              <p className="mt-1 text-sm text-amber-800">{result.analysis}</p>
-            </div>
+            <Alert variant="warning">
+              <Lightbulb className="size-4" />
+              <AlertDescription>
+                <span className="font-semibold text-foreground">Diagnóstico: </span>
+                {result.analysis}
+              </AlertDescription>
+            </Alert>
             {result.variants.map((v, i) => (
               <ImprovedCard key={i} index={i} variant={v} />
             ))}
@@ -451,32 +449,31 @@ function ImprovedCard({
   async function copy() {
     await navigator.clipboard.writeText(variant.content)
     setCopied(true)
+    toast.success('Copiado al portapapeles.')
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">
-          Versión {index + 1}
-        </span>
-        <button
-          onClick={copy}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? 'Copiado' : 'Copiar'}
-        </button>
-      </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{variant.content}</p>
-      <div className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
-        ✏️ {variant.changes}
-      </div>
-    </div>
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        <div className="flex items-center justify-between">
+          <Badge variant="secondary">Versión {index + 1}</Badge>
+          <Button variant="ghost" size="sm" onClick={copy} className="gap-1.5">
+            {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+            {copied ? 'Copiado' : 'Copiar'}
+          </Button>
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{variant.content}</p>
+        <div className="rounded-md bg-muted/40 px-3 py-2 text-xs italic text-muted-foreground">
+          ✏️ {variant.changes}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
-// ============== Tab: Analizar competidor ==============
+// ============== Analizar competidor ==============
+
 interface Sample {
   platform: string
   content: string
@@ -518,15 +515,9 @@ function AnalyzeTab() {
   }
 
   async function handleAnalyze() {
-    if (!competitorName.trim()) {
-      setError('Indicá el nombre del competidor.')
-      return
-    }
+    if (!competitorName.trim()) return setError('Indicá el nombre del competidor.')
     const validSamples = samples.filter((s) => s.content.trim().length >= 10)
-    if (validSamples.length === 0) {
-      setError('Pegá al menos una muestra con 10+ caracteres.')
-      return
-    }
+    if (validSamples.length === 0) return setError('Pegá al menos una muestra con 10+ caracteres.')
     setLoading(true)
     setError(null)
     setResult(null)
@@ -548,21 +539,11 @@ function AnalyzeTab() {
         }),
       })
       const { data, error: parseErr } = await parseJsonOr(res)
-      if (parseErr) {
-        setError(parseErr)
-        return
-      }
-      if (!res.ok) {
-        setError(data.error?.detail || data.error || `Error ${res.status}`)
-        return
-      }
+      if (parseErr) return setError(parseErr)
+      if (!res.ok) return setError(data.error?.detail || data.error || `Error ${res.status}`)
       setResult(data)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `No se pudo conectar con la API: ${err.message}`
-          : 'Error de red',
-      )
+      setError(err instanceof Error ? `No se pudo conectar: ${err.message}` : 'Error de red')
     } finally {
       setLoading(false)
     }
@@ -570,183 +551,209 @@ function AnalyzeTab() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4 rounded-lg border border-border bg-card p-5">
-        <h2 className="font-semibold text-foreground">Datos del competidor</h2>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-foreground">Nombre / marca</label>
-            <input
-              type="text"
-              value={competitorName}
-              onChange={(e) => setCompetitorName(e.target.value)}
-              placeholder="Ej: Acme Marketing Agency"
-              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground">Sector (opcional)</label>
-            <input
-              type="text"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              placeholder="Ej: Marketing digital B2B"
-              className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-foreground">
-            Pregunta específica (opcional)
-          </label>
-          <input
-            type="text"
-            value={focusQuestion}
-            onChange={(e) => setFocusQuestion(e.target.value)}
-            maxLength={500}
-            placeholder="Ej: ¿qué hace que sus posts de LinkedIn tengan tanto engagement?"
-            className="mt-1 w-full rounded-lg border border-input px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-3 rounded-lg border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">
-            Muestras de posts ({samples.length}/20)
-          </h2>
-          <button
-            onClick={addSample}
-            disabled={samples.length >= 20}
-            className="rounded-md border border-input px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/40 disabled:opacity-50"
-          >
-            + Agregar muestra
-          </button>
-        </div>
-
-        {samples.map((s, i) => (
-          <div key={i} className="rounded-lg border border-border p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <select
-                value={s.platform}
-                onChange={(e) => updateSample(i, 'platform', e.target.value)}
-                className="rounded border border-input px-2 py-1 text-xs"
-              >
-                {PLATFORMS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-              <input
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Datos del competidor</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="comp-name">Nombre / marca</Label>
+              <Input
+                id="comp-name"
                 type="text"
-                value={s.metric}
-                onChange={(e) => updateSample(i, 'metric', e.target.value)}
-                placeholder="Engagement: ej. '450 likes, 23 comentarios' (opcional)"
-                className="flex-1 rounded border border-input px-2 py-1 text-xs"
+                value={competitorName}
+                onChange={(e) => setCompetitorName(e.target.value)}
+                placeholder="Acme Marketing Agency"
               />
-              {samples.length > 1 && (
-                <button
-                  onClick={() => removeSample(i)}
-                  className="text-xs text-red-500 hover:text-destructive"
-                  title="Quitar muestra"
-                >
-                  Quitar
-                </button>
-              )}
             </div>
-            <textarea
-              value={s.content}
-              onChange={(e) => updateSample(i, 'content', e.target.value)}
-              rows={3}
-              maxLength={10000}
-              placeholder="Pegá acá el texto del post..."
-              className="w-full rounded border border-input px-2 py-1.5 text-sm"
+            <div className="space-y-1.5">
+              <Label htmlFor="industry">Sector (opcional)</Label>
+              <Input
+                id="industry"
+                type="text"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="Marketing digital B2B"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="focus">Pregunta específica (opcional)</Label>
+            <Input
+              id="focus"
+              type="text"
+              value={focusQuestion}
+              onChange={(e) => setFocusQuestion(e.target.value)}
+              maxLength={500}
+              placeholder="¿Qué hace que sus posts de LinkedIn tengan tanto engagement?"
             />
           </div>
-        ))}
+        </CardContent>
+      </Card>
 
-        {error && <ErrorBox message={error} />}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Muestras de posts</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="muted">{samples.length}/20</Badge>
+              <Button variant="outline" size="sm" onClick={addSample} disabled={samples.length >= 20}>
+                Agregar muestra
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {samples.map((s, i) => (
+            <div key={i} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={s.platform}
+                  onValueChange={(v) => updateSample(i, 'platform', v)}
+                >
+                  <SelectTrigger className="h-8 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PLATFORMS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="text"
+                  value={s.metric}
+                  onChange={(e) => updateSample(i, 'metric', e.target.value)}
+                  placeholder="Ej: 450 likes, 23 comentarios (opcional)"
+                  className="h-8 flex-1 text-xs"
+                />
+                {samples.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSample(i)}
+                    className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    Quitar
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                value={s.content}
+                onChange={(e) => updateSample(i, 'content', e.target.value)}
+                rows={3}
+                maxLength={10000}
+                placeholder="Pegá acá el texto del post…"
+              />
+            </div>
+          ))}
 
-        <button
-          onClick={handleAnalyze}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          {loading ? 'Analizando con Claude...' : 'Analizar competidor'}
-        </button>
-      </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button onClick={handleAnalyze} loading={loading} disabled={loading} variant="gradient" className="w-full">
+            {!loading && <Search className="size-4" />}
+            {loading ? 'Analizando con Claude' : 'Analizar competidor'}
+          </Button>
+        </CardContent>
+      </Card>
 
       {loading && (
-        <div className="rounded-lg border border-dashed border-input bg-muted/40 p-8 text-center text-muted-foreground">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
-          <p className="mt-2 text-sm">Claude está analizando las muestras (puede tardar 20-40s)...</p>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
+            <Loader2 className="size-8 animate-spin text-primary" />
+            <p className="text-sm">Claude está analizando las muestras (20-40s)…</p>
+          </CardContent>
+        </Card>
       )}
 
       {result && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-5">
-            <h3 className="text-lg font-semibold text-foreground">Resumen ejecutivo</h3>
-            <p className="mt-2 text-sm text-foreground">{result.summary}</p>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Resumen ejecutivo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed text-foreground">{result.summary}</p>
+            </CardContent>
+          </Card>
 
-          <div className="rounded-lg border border-border bg-card p-5">
-            <h3 className="text-lg font-semibold text-foreground">Patrones detectados</h3>
-            <ul className="mt-3 space-y-3">
-              {result.patterns.map((p, i) => (
-                <li key={i} className="border-l-4 border-blue-400 pl-3">
-                  <p className="text-xs font-bold uppercase text-primary">{p.category}</p>
-                  <p className="text-sm font-medium text-foreground">{p.observation}</p>
-                  <p className="mt-0.5 text-xs italic text-muted-foreground">↳ {p.evidence}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Patrones detectados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {result.patterns.map((p, i) => (
+                  <li key={i} className="border-l-2 border-primary pl-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      {p.category}
+                    </p>
+                    <p className="text-sm font-medium text-foreground">{p.observation}</p>
+                    <p className="mt-0.5 text-xs italic text-muted-foreground">↳ {p.evidence}</p>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border-l-4 border-green-500 bg-success/10 p-4">
-              <h3 className="font-semibold text-green-900">Fortalezas</h3>
-              <ul className="mt-2 space-y-1.5 text-sm text-success">
-                {result.strengths.map((s, i) => (
-                  <li key={i}>• {s}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-lg border-l-4 border-red-500 bg-destructive/10 p-4">
-              <h3 className="font-semibold text-red-900">Debilidades / oportunidades</h3>
-              <ul className="mt-2 space-y-1.5 text-sm text-destructive">
-                {result.weaknesses.map((w, i) => (
-                  <li key={i}>• {w}</li>
-                ))}
-              </ul>
-            </div>
+            <Card className="border-success/30 bg-success/5">
+              <CardHeader>
+                <CardTitle className="text-base text-success">Fortalezas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1.5 text-sm text-foreground">
+                  {result.strengths.map((s, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-success">•</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+            <Card className="border-destructive/30 bg-destructive/5">
+              <CardHeader>
+                <CardTitle className="text-base text-destructive">Debilidades / oportunidades</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1.5 text-sm text-foreground">
+                  {result.weaknesses.map((w, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-destructive">•</span>
+                      <span>{w}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="rounded-lg border-l-4 border-purple-500 bg-purple-50 p-4">
-            <h3 className="font-semibold text-purple-900">Recomendaciones para diferenciarse</h3>
-            <ul className="mt-2 space-y-2 text-sm text-purple-800">
-              {result.recommendations.map((r, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-bold">{i + 1}.</span>
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-base text-primary">Recomendaciones para diferenciarse</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-2 text-sm text-foreground">
+                {result.recommendations.map((r, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="font-bold tabular-nums text-primary">{i + 1}.</span>
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
         </div>
       )}
-    </div>
-  )
-}
-
-function ErrorBox({ message }: { message: string }) {
-  return (
-    <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm text-destructive">
-      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-      <span>{message}</span>
     </div>
   )
 }

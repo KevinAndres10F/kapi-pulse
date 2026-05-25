@@ -2,9 +2,11 @@ export const metadata = {
   title: 'Términos de Servicio — KAPI Pulse',
 }
 
+import { LegalShell } from '@/components/legal/legal-shell'
+
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-foreground">
+    <LegalShell>
       <h1 className="text-3xl font-bold text-foreground">Términos de Servicio</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         KAPI Pulse — operado por KAPI Service Group (Ecuador) · Vigente desde 14 de mayo de 2026
@@ -100,6 +102,6 @@ export default function TermsPage() {
           </a>
         </p>
       </section>
-    </main>
+    </LegalShell>
   )
 }

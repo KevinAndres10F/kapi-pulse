@@ -1,9 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Settings, Save } from 'lucide-react'
+import { Save, Settings } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { createClient } from '@/lib/supabase/client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const TIMEZONES = [
   'America/Guayaquil',
@@ -31,7 +45,6 @@ export default function SettingsPage() {
   const [locale, setLocale] = useState('es-EC')
   const [orgId, setOrgId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
@@ -59,7 +72,6 @@ export default function SettingsPage() {
     if (!orgId) return
     setLoading(true)
     setError(null)
-    setSaved(false)
 
     const { error: updateError } = await supabase
       .from('organizations')
@@ -67,10 +79,9 @@ export default function SettingsPage() {
       .eq('id', orgId)
 
     if (updateError) {
-      setError('Error al guardar. Verifica los permisos.')
+      setError('Error al guardar. Verificá los permisos.')
     } else {
-      setSaved(true)
-      // Si cambió el slug, redirigir
+      toast.success('Cambios guardados.')
       if (slug !== orgSlug) {
         window.location.href = `/${slug}/settings`
       }
@@ -79,76 +90,98 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Settings className="h-6 w-6" />
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Settings className="size-6 text-primary" />
           Configuración
         </h1>
-        <p className="mt-1 text-muted-foreground">Ajusta los datos de tu organización.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Ajustá los datos de tu organización.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6 rounded-lg border border-border bg-card p-6">
-        <div>
-          <label className="block text-sm font-medium text-foreground">Nombre</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2 focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
-          />
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Información general</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Nombre de la organización</Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="max-w-md"
+              />
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-foreground">Slug (URL)</label>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-            required
-            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2 focus:border-ring focus:outline-none focus:ring-2 focus-visible:ring-ring/40"
-          />
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="slug">URL del espacio</Label>
+              <div className="flex max-w-md items-stretch overflow-hidden rounded-md border border-input bg-background shadow-xs focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40">
+                <span className="flex items-center bg-muted px-3 text-xs text-muted-foreground">
+                  kapi-pulse.com/
+                </span>
+                <input
+                  id="slug"
+                  type="text"
+                  value={slug}
+                  onChange={(e) =>
+                    setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                  }
+                  required
+                  className="w-full bg-transparent px-3 py-2 text-sm text-foreground outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Solo minúsculas, números y guiones.</p>
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-foreground">Zona horaria</label>
-          <select
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2"
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>{tz.replace('America/', '')}</option>
-            ))}
-          </select>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tz">Zona horaria</Label>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger id="tz" className="max-w-md">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz} value={tz}>
+                      {tz.replace('America/', '')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-foreground">Idioma</label>
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value)}
-            className="mt-1 w-full max-w-md rounded-lg border border-input px-4 py-2"
-          >
-            {LOCALES.map((l) => (
-              <option key={l.value} value={l.value}>{l.label}</option>
-            ))}
-          </select>
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="locale">Idioma</Label>
+              <Select value={locale} onValueChange={setLocale}>
+                <SelectTrigger id="locale" className="max-w-md">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCALES.map((l) => (
+                    <SelectItem key={l.value} value={l.value}>
+                      {l.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {saved && <p className="text-sm text-success">Cambios guardados correctamente.</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {loading ? 'Guardando...' : 'Guardar cambios'}
-        </button>
-      </form>
+            <Button type="submit" loading={loading} variant="gradient">
+              {!loading && <Save className="size-4" />}
+              {loading ? 'Guardando' : 'Guardar cambios'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

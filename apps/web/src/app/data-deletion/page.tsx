@@ -2,9 +2,11 @@ export const metadata = {
   title: 'Eliminación de datos — KAPI Pulse',
 }
 
+import { LegalShell } from '@/components/legal/legal-shell'
+
 export default function DataDeletionPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16 text-foreground">
+    <LegalShell>
       <h1 className="text-3xl font-bold text-foreground">Eliminación de tus datos</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         KAPI Pulse — operado por KAPI Service Group (Ecuador)
@@ -103,6 +105,6 @@ export default function DataDeletionPage() {
           Última actualización: 14 de mayo de 2026
         </p>
       </section>
-    </main>
+    </LegalShell>
   )
 }
