@@ -3,24 +3,41 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Megaphone, AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Loader2, Megaphone, Save } from 'lucide-react'
+import { toast } from 'sonner'
+
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 import {
+  checkFunding,
+  createDraft,
   listAdAccounts,
   listPages,
-  createDraft,
-  checkFunding,
   type AdAccount,
-  type BusinessPage,
   type AdObjective,
+  type BusinessPage,
 } from '@/lib/ads/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 const OBJECTIVES: Array<{ value: AdObjective; label: string; help: string }> = [
   { value: 'OUTCOME_TRAFFIC', label: 'Tráfico', help: 'Mandar gente a tu web/landing' },
   { value: 'OUTCOME_AWARENESS', label: 'Reconocimiento', help: 'Máximo alcance e impresiones' },
   { value: 'OUTCOME_ENGAGEMENT', label: 'Interacción', help: 'Reacciones, comentarios, compartidos' },
   { value: 'OUTCOME_LEADS', label: 'Leads', help: 'Formularios de contacto desde el anuncio' },
-  { value: 'OUTCOME_SALES', label: 'Ventas', help: 'Conversiones de compra (requiere Pixel)' },
+  { value: 'OUTCOME_SALES', label: 'Ventas', help: 'Conversiones (requiere Pixel)' },
 ]
 
 const CTAS = [
@@ -45,6 +62,13 @@ const COUNTRIES = [
   { code: 'ES', name: 'España' },
 ]
 
+const PLATFORMS = [
+  { v: 'facebook', l: 'Facebook' },
+  { v: 'instagram', l: 'Instagram' },
+  { v: 'audience_network', l: 'Audience Network' },
+  { v: 'messenger', l: 'Messenger' },
+]
+
 export default function NewAdPage() {
   const params = useParams<{ orgSlug: string }>()
   const router = useRouter()
@@ -60,7 +84,6 @@ export default function NewAdPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [fundingWarning, setFundingWarning] = useState<string | null>(null)
 
-  // Form state
   const [adAccountId, setAdAccountId] = useState('')
   const [name, setName] = useState('')
   const [objective, setObjective] = useState<AdObjective>('OUTCOME_TRAFFIC')
@@ -76,11 +99,12 @@ export default function NewAdPage() {
   const [cta, setCta] = useState('LEARN_MORE')
   const [imageUrl, setImageUrl] = useState('')
 
-  // Load context
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (cancelled || !user) return
       setUserId(user.id)
 
@@ -93,17 +117,14 @@ export default function NewAdPage() {
       const oid = (org as { id: string }).id
       setOrgId(oid)
 
-      // Cargar ad accounts y pages en paralelo
       try {
         const [acc, pg] = await Promise.all([
           listAdAccounts(oid, user.id),
           listPages(user.id).catch((e) => {
-            // listPages requiere admin — si el cliente no es admin, no se le muestran pages.
-            // En ese caso le tocará pegar el pageId a mano.
             setPagesError(
               e instanceof Error && e.message.includes('admin')
-                ? 'No tienes permiso para listar Pages. Pega el Page ID manualmente.'
-                : `Error cargando Pages: ${e instanceof Error ? e.message : 'desconocido'}`
+                ? 'No tenés permiso para listar Pages. Pegá el Page ID manualmente.'
+                : `Error cargando Pages: ${e instanceof Error ? e.message : 'desconocido'}`,
             )
             return { pages: [] }
           }),
@@ -122,29 +143,29 @@ export default function NewAdPage() {
     }
   }, [params.orgSlug, supabase])
 
-  // Cuando se elige una ad account, validar funding en background
-  const validateFunding = useCallback(async (accId: string) => {
-    if (!userId) return
-    setFundingWarning(null)
-    try {
-      const status = await checkFunding(accId, userId)
-      if (!status.hasFunding) {
-        if (!status.fundingSource) {
-          setFundingWarning(
-            'Esta cuenta publicitaria no tiene un método de pago configurado. ' +
-              'Aunque puedes guardar el borrador, la aprobación va a fallar hasta que agregues una tarjeta en Meta Ads Manager.',
-          )
-        } else if (status.accountStatus !== 1) {
-          setFundingWarning(
-            `Esta cuenta tiene status ${status.accountStatus} (no activa). ` +
-              'La aprobación va a fallar hasta que se reactive en Meta.',
-          )
+  const validateFunding = useCallback(
+    async (accId: string) => {
+      if (!userId) return
+      setFundingWarning(null)
+      try {
+        const status = await checkFunding(accId, userId)
+        if (!status.hasFunding) {
+          if (!status.fundingSource) {
+            setFundingWarning(
+              'Esta cuenta no tiene método de pago configurado. Podés guardar el borrador pero la aprobación va a fallar hasta que agregues una tarjeta en Meta Ads Manager.',
+            )
+          } else if (status.accountStatus !== 1) {
+            setFundingWarning(
+              `Esta cuenta tiene status ${status.accountStatus} (no activa). La aprobación va a fallar hasta que se reactive en Meta.`,
+            )
+          }
         }
+      } catch {
+        // No bloqueante
       }
-    } catch {
-      // No bloqueante
-    }
-  }, [userId])
+    },
+    [userId],
+  )
 
   useEffect(() => {
     if (adAccountId) validateFunding(adAccountId)
@@ -161,22 +182,10 @@ export default function NewAdPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!orgId || !userId) return
-    if (!adAccountId) {
-      setSubmitError('Elige una cuenta publicitaria')
-      return
-    }
-    if (!pageId) {
-      setSubmitError('Elige o pega el Page ID')
-      return
-    }
-    if (countries.length === 0) {
-      setSubmitError('Elige al menos un país')
-      return
-    }
-    if (platforms.length === 0) {
-      setSubmitError('Elige al menos una plataforma')
-      return
-    }
+    if (!adAccountId) return setSubmitError('Elegí una cuenta publicitaria.')
+    if (!pageId) return setSubmitError('Elegí o pegá el Page ID.')
+    if (countries.length === 0) return setSubmitError('Elegí al menos un país.')
+    if (platforms.length === 0) return setSubmitError('Elegí al menos una plataforma.')
 
     setSubmitting(true)
     setSubmitError(null)
@@ -218,6 +227,7 @@ export default function NewAdPage() {
         userId,
       )
 
+      toast.success('Borrador creado.')
       router.push(`/${params.orgSlug}/ads`)
     } catch (e) {
       const err = e as Error & { details?: unknown }
@@ -230,9 +240,9 @@ export default function NewAdPage() {
 
   if (!userId || !orgId || loadingMeta) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Cargando...
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Cargando…
       </div>
     )
   }
@@ -240,336 +250,353 @@ export default function NewAdPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <Link
-          href={`/${params.orgSlug}/ads`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Link>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-foreground">
-          <Megaphone className="h-6 w-6 text-primary" />
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link href={`/${params.orgSlug}/ads`}>
+            <ArrowLeft className="size-4" />
+            Volver
+          </Link>
+        </Button>
+        <h1 className="mt-2 flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          <Megaphone className="size-6 text-primary" />
           Nueva campaña
         </h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Esto crea un borrador. El equipo KAPI lo revisa antes de lanzarlo en Meta.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Datos generales */}
-        <Section title="Configuración general">
-          <Field label="Nombre de la campaña" required>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Lanzamiento Marzo 2026"
-              required
-              minLength={3}
-              maxLength={200}
-              className="input"
-            />
-          </Field>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Configuración general</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">
+                Nombre de la campaña <Required />
+              </Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Lanzamiento Marzo 2026"
+                required
+                minLength={3}
+                maxLength={200}
+              />
+            </div>
 
-          <Field label="Cuenta publicitaria" required>
-            <select
-              value={adAccountId}
-              onChange={(e) => setAdAccountId(e.target.value)}
-              required
-              className="input"
-            >
-              <option value="">— Elige una cuenta —</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name || a.meta_ad_account_id} ({a.currency})
-                </option>
-              ))}
-            </select>
-            {accounts.length === 0 && (
-              <p className="mt-1 text-xs text-warning-foreground">
-                No tienes cuentas. Contacta al equipo KAPI.
-              </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="acc">
+                Cuenta publicitaria <Required />
+              </Label>
+              <Select value={adAccountId} onValueChange={setAdAccountId}>
+                <SelectTrigger id="acc">
+                  <SelectValue placeholder="Elegí una cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name || a.meta_ad_account_id}{' '}
+                      <span className="text-muted-foreground">· {a.currency}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {accounts.length === 0 && (
+                <p className="text-xs text-warning-foreground">
+                  No tenés cuentas. Contactá al equipo KAPI.
+                </p>
+              )}
+            </div>
+
+            {fundingWarning && (
+              <Alert variant="warning">
+                <AlertTriangle className="size-4" />
+                <AlertDescription>{fundingWarning}</AlertDescription>
+              </Alert>
             )}
-          </Field>
 
-          {fundingWarning && (
-            <div className="rounded-md border border-warning/30 bg-warning/15 p-3">
-              <div className="flex gap-2">
-                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-warning-foreground" />
-                <p className="text-sm text-yellow-800">{fundingWarning}</p>
+            <div className="space-y-1.5">
+              <Label>
+                Objetivo <Required />
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {OBJECTIVES.map((o) => {
+                  const active = objective === o.value
+                  return (
+                    <button
+                      type="button"
+                      key={o.value}
+                      onClick={() => setObjective(o.value)}
+                      className={cn(
+                        'flex items-start gap-2 rounded-lg border p-3 text-left transition-all',
+                        active
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                          : 'border-border bg-card hover:border-primary/40',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2',
+                          active ? 'border-primary' : 'border-input',
+                        )}
+                      >
+                        {active && <span className="size-2 rounded-full bg-primary" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{o.label}</p>
+                        <p className="text-xs text-muted-foreground">{o.help}</p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
-          )}
 
-          <Field label="Objetivo" required>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {OBJECTIVES.map((o) => (
-                <label
-                  key={o.value}
-                  className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${
-                    objective === o.value
-                      ? 'border-ring bg-primary/10'
-                      : 'border-border hover:border-input'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="objective"
-                    value={o.value}
-                    checked={objective === o.value}
-                    onChange={() => setObjective(o.value)}
-                    className="mt-1"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{o.label}</p>
-                    <p className="text-xs text-muted-foreground">{o.help}</p>
-                  </div>
-                </label>
-              ))}
+            <div className="space-y-1.5">
+              <Label htmlFor="budget">
+                Presupuesto diario <Required />
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">USD</span>
+                <Input
+                  id="budget"
+                  type="number"
+                  step="0.50"
+                  min="1.00"
+                  value={dailyBudgetUsd}
+                  onChange={(e) => setDailyBudgetUsd(e.target.value)}
+                  required
+                  className="w-32 tabular-nums"
+                />
+                <span className="text-sm text-muted-foreground">por día</span>
+              </div>
             </div>
-          </Field>
+          </CardContent>
+        </Card>
 
-          <Field label="Presupuesto diario (USD)" required>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">$</span>
-              <input
-                type="number"
-                step="0.50"
-                min="1.00"
-                value={dailyBudgetUsd}
-                onChange={(e) => setDailyBudgetUsd(e.target.value)}
-                required
-                className="input w-32"
-              />
-              <span className="text-sm text-muted-foreground">por día</span>
-            </div>
-          </Field>
-        </Section>
-
-        {/* Segmentación */}
-        <Section title="Segmentación">
-          <Field label="Países">
-            <div className="flex flex-wrap gap-2">
-              {COUNTRIES.map((c) => (
-                <button
-                  key={c.code}
-                  type="button"
-                  onClick={() => toggleCountry(c.code)}
-                  className={`rounded-full border px-3 py-1 text-xs ${
-                    countries.includes(c.code)
-                      ? 'border-ring bg-blue-100 text-primary'
-                      : 'border-input bg-card text-foreground hover:bg-muted/40'
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Edad mínima">
-              <input
-                type="number"
-                min="13"
-                max="65"
-                value={ageMin}
-                onChange={(e) => setAgeMin(Number(e.target.value))}
-                className="input"
-              />
-            </Field>
-            <Field label="Edad máxima">
-              <input
-                type="number"
-                min="13"
-                max="65"
-                value={ageMax}
-                onChange={(e) => setAgeMax(Number(e.target.value))}
-                className="input"
-              />
-            </Field>
-          </div>
-
-          <Field label="Plataformas">
-            <div className="flex gap-2">
-              {[
-                { v: 'facebook', l: 'Facebook' },
-                { v: 'instagram', l: 'Instagram' },
-                { v: 'audience_network', l: 'Audience Network' },
-                { v: 'messenger', l: 'Messenger' },
-              ].map((p) => (
-                <button
-                  key={p.v}
-                  type="button"
-                  onClick={() => togglePlatform(p.v)}
-                  className={`rounded-full border px-3 py-1 text-xs ${
-                    platforms.includes(p.v)
-                      ? 'border-ring bg-blue-100 text-primary'
-                      : 'border-input bg-card text-foreground hover:bg-muted/40'
-                  }`}
-                >
-                  {p.l}
-                </button>
-              ))}
-            </div>
-          </Field>
-        </Section>
-
-        {/* Creative */}
-        <Section title="Creativo del anuncio">
-          <Field label="Página de Facebook" required>
-            {pages.length > 0 ? (
-              <select
-                value={pageId}
-                onChange={(e) => setPageId(e.target.value)}
-                required
-                className="input"
-              >
-                <option value="">— Elige una página —</option>
-                {pages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || p.id} {p.kind === 'client' ? '(cliente)' : ''}
-                  </option>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Segmentación</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Países</Label>
+              <div className="flex flex-wrap gap-2">
+                {COUNTRIES.map((c) => (
+                  <Chip
+                    key={c.code}
+                    active={countries.includes(c.code)}
+                    onClick={() => toggleCountry(c.code)}
+                  >
+                    {c.name}
+                  </Chip>
                 ))}
-              </select>
-            ) : (
-              <input
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="age-min">Edad mínima</Label>
+                <Input
+                  id="age-min"
+                  type="number"
+                  min="13"
+                  max="65"
+                  value={ageMin}
+                  onChange={(e) => setAgeMin(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="age-max">Edad máxima</Label>
+                <Input
+                  id="age-max"
+                  type="number"
+                  min="13"
+                  max="65"
+                  value={ageMax}
+                  onChange={(e) => setAgeMax(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Plataformas</Label>
+              <div className="flex flex-wrap gap-2">
+                {PLATFORMS.map((p) => (
+                  <Chip
+                    key={p.v}
+                    active={platforms.includes(p.v)}
+                    onClick={() => togglePlatform(p.v)}
+                  >
+                    {p.l}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Creativo del anuncio</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="page">
+                Página de Facebook <Required />
+              </Label>
+              {pages.length > 0 ? (
+                <Select value={pageId} onValueChange={setPageId}>
+                  <SelectTrigger id="page">
+                    <SelectValue placeholder="Elegí una página" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pages.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || p.id}
+                        {p.kind === 'client' && (
+                          <Badge variant="muted" className="ml-1">
+                            cliente
+                          </Badge>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="page"
+                  type="text"
+                  value={pageId}
+                  onChange={(e) => setPageId(e.target.value)}
+                  placeholder="123456789012345"
+                  required
+                  className="font-mono"
+                />
+              )}
+              {pagesError && <p className="text-xs text-warning-foreground">{pagesError}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="headline">Titular (headline)</Label>
+              <Input
+                id="headline"
                 type="text"
-                value={pageId}
-                onChange={(e) => setPageId(e.target.value)}
-                placeholder="123456789012345"
-                required
-                className="input"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                maxLength={255}
+                placeholder="¡Hasta 50% OFF!"
               />
-            )}
-            {pagesError && <p className="mt-1 text-xs text-warning-foreground">{pagesError}</p>}
-          </Field>
+            </div>
 
-          <Field label="Titular (headline)">
-            <input
-              type="text"
-              value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
-              maxLength={255}
-              placeholder="Ej: ¡Hasta 50% OFF!"
-              className="input"
-            />
-          </Field>
+            <div className="space-y-1.5">
+              <Label htmlFor="message">Texto principal</Label>
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="Mensaje que aparece arriba del anuncio"
+              />
+            </div>
 
-          <Field label="Texto principal (message)">
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              maxLength={2000}
-              placeholder="Mensaje principal que aparece arriba del anuncio"
-              rows={3}
-              className="input"
-            />
-          </Field>
+            <div className="space-y-1.5">
+              <Label htmlFor="link">
+                URL de destino <Required />
+              </Label>
+              <Input
+                id="link"
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://kapi.ec/promo"
+                required
+              />
+            </div>
 
-          <Field label="URL de destino" required>
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://kapi.ec/promo"
-              required
-              className="input"
-            />
-          </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="cta">Botón de acción</Label>
+                <Select value={cta} onValueChange={setCta}>
+                  <SelectTrigger id="cta">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CTAS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c.replace(/_/g, ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <Field label="Botón de acción">
-            <select value={cta} onChange={(e) => setCta(e.target.value)} className="input">
-              {CTAS.map((c) => (
-                <option key={c} value={c}>
-                  {c.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="URL de imagen (opcional)">
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="input"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pega una URL pública. Más adelante podrás vincular un asset de Studio.
+              <div className="space-y-1.5">
+                <Label htmlFor="img">Imagen (URL)</Label>
+                <Input
+                  id="img"
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Pegá una URL pública. Más adelante podés vincular un asset de Studio.
             </p>
-          </Field>
-        </Section>
+          </CardContent>
+        </Card>
 
         {submitError && (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-            {submitError}
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
         )}
 
         <div className="flex justify-end gap-2">
-          <Link
-            href={`/${params.orgSlug}/ads`}
-            className="rounded-md border border-input bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
-          >
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-          >
-            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Guardar borrador
-          </button>
+          <Button asChild variant="outline">
+            <Link href={`/${params.orgSlug}/ads`}>Cancelar</Link>
+          </Button>
+          <Button type="submit" loading={submitting} variant="gradient">
+            {!submitting && <Save className="size-4" />}
+            {submitting ? 'Guardando' : 'Guardar borrador'}
+          </Button>
         </div>
       </form>
-
-      <style jsx>{`
-        :global(.input) {
-          width: 100%;
-          border: 1px solid rgb(209 213 219);
-          border-radius: 0.375rem;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
-        }
-        :global(.input:focus) {
-          outline: none;
-          border-color: rgb(59 130 246);
-          box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
-        }
-      `}</style>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <h2 className="mb-4 font-semibold text-foreground">{title}</h2>
-      <div className="space-y-4">{children}</div>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  required,
+function Chip({
+  active,
+  onClick,
   children,
 }: {
-  label: string
-  required?: boolean
+  active: boolean
+  onClick: () => void
   children: React.ReactNode
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
-      </label>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1 text-xs font-medium transition-all',
+        active
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-border bg-card text-foreground hover:border-primary/40',
+      )}
+    >
       {children}
-    </div>
+    </button>
   )
+}
+
+function Required() {
+  return <span className="text-destructive">*</span>
 }
