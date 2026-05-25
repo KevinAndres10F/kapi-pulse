@@ -79,7 +79,20 @@ export default function NewPostPage() {
   >([])
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [networkPickerOpen, setNetworkPickerOpen] = useState(false)
+  const networkPickerRef = useRef<HTMLDivElement | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    if (!networkPickerOpen) return
+    function onPointerDown(e: PointerEvent) {
+      if (!networkPickerRef.current?.contains(e.target as Node)) {
+        setNetworkPickerOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [networkPickerOpen])
 
   async function getAuthToken(): Promise<string | null> {
     const { data } = await supabase.auth.getSession()
@@ -222,6 +235,7 @@ export default function NewPostPage() {
   useEffect(() => { loadAccounts() }, [loadAccounts])
 
   function addVariant(account: SocialAccount) {
+    setNetworkPickerOpen(false)
     if (variants.find((v) => v.socialAccountId === account.id)) return
     setVariants([...variants, {
       socialAccountId: account.id,
@@ -355,25 +369,40 @@ export default function NewPostPage() {
                 </button>
               ))}
               {/* Dropdown para agregar red */}
-              <div className="relative group">
-                <button className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50">
+              <div className="relative" ref={networkPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setNetworkPickerOpen((v) => !v)}
+                  aria-expanded={networkPickerOpen}
+                  aria-haspopup="menu"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50"
+                >
                   <Plus className="h-4 w-4" /> Red
                 </button>
-                <div className="absolute left-0 top-full z-10 hidden group-hover:block mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  {accounts.filter((a) => !variants.find((v) => v.socialAccountId === a.id)).map((account) => (
-                    <button
-                      key={account.id}
-                      onClick={() => addVariant(account)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      {account.display_name || account.provider}
-                      <span className="text-xs text-gray-400">({account.provider})</span>
-                    </button>
-                  ))}
-                  {accounts.length === 0 && (
-                    <p className="px-3 py-2 text-xs text-gray-400">Sin cuentas conectadas</p>
-                  )}
-                </div>
+                {networkPickerOpen && (
+                  <div
+                    role="menu"
+                    className="absolute left-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                  >
+                    {accounts.filter((a) => !variants.find((v) => v.socialAccountId === a.id)).map((account) => (
+                      <button
+                        key={account.id}
+                        type="button"
+                        onClick={() => addVariant(account)}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        {account.display_name || account.provider}
+                        <span className="text-xs text-gray-400">({account.provider})</span>
+                      </button>
+                    ))}
+                    {accounts.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-gray-400">Sin cuentas conectadas</p>
+                    )}
+                    {accounts.length > 0 && accounts.every((a) => variants.find((v) => v.socialAccountId === a.id)) && (
+                      <p className="px-3 py-2 text-xs text-gray-400">Ya agregaste todas tus cuentas.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
