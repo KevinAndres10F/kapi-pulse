@@ -19,17 +19,18 @@ interface DashboardData {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export function DashboardOverview({ accessToken }: { accessToken?: string }) {
+export function DashboardOverview({ orgId, accessToken }: { orgId: string; accessToken?: string }) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!orgId || !accessToken) return
     const fetchData = async () => {
       try {
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/dashboard/brand-overview`, { headers })
+        const response = await fetch(`${API_URL}/studio/dashboard/brand-overview?orgId=${orgId}`, { headers })
         const result = await response.json()
         setData(result)
       } catch (error) {
@@ -41,7 +42,7 @@ export function DashboardOverview({ accessToken }: { accessToken?: string }) {
 
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken])
+  }, [accessToken, orgId])
 
   if (loading) {
     return (

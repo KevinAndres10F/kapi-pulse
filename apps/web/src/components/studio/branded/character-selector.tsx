@@ -21,22 +21,24 @@ interface Character {
 }
 
 interface CharacterSelectorProps {
+  orgId: string
   accessToken?: string
   onSelect?: (characterId: string) => void
 }
 
-export function CharacterSelector({ accessToken, onSelect }: CharacterSelectorProps) {
+export function CharacterSelector({ orgId, accessToken, onSelect }: CharacterSelectorProps) {
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!orgId || !accessToken) return
     const fetchCharacters = async () => {
       try {
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/branded/characters`, { headers })
+        const response = await fetch(`${API_URL}/studio/branded/characters?orgId=${orgId}`, { headers })
         const data = await response.json()
         setCharacters(data.characters || [])
 
@@ -55,7 +57,7 @@ export function CharacterSelector({ accessToken, onSelect }: CharacterSelectorPr
 
     fetchCharacters()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken])
+  }, [accessToken, orgId])
 
   if (loading) {
     return (

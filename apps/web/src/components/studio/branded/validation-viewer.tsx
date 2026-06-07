@@ -19,10 +19,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface ValidationViewerProps {
   assetId: string
+  orgId: string
   accessToken?: string
 }
 
-export function ValidationViewer({ assetId, accessToken }: ValidationViewerProps) {
+export function ValidationViewer({ assetId, orgId, accessToken }: ValidationViewerProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -33,7 +34,7 @@ export function ValidationViewer({ assetId, accessToken }: ValidationViewerProps
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
       const response = await fetch(
-        `${API_URL}/studio/brand-validation/assets/${assetId}/validate`,
+        `${API_URL}/studio/brand-validation/assets/${assetId}/validate?orgId=${orgId}`,
         { headers },
       )
       const data = await response.json()
