@@ -2,8 +2,8 @@ import { supabaseAdmin } from '../lib/supabase'
 import { deductCredits, refundCredits, getPriceForOperation, InsufficientCreditsError } from './credits'
 import { getGenerationQueue } from '../lib/queues'
 
-export type GenKind = 'image' | 'video' | 'avatar_video' | 'copy_bundle'
-export type GenProvider = 'fal' | 'replicate' | 'heygen' | 'hedra' | 'claude'
+export type GenKind = 'image' | 'video' | 'avatar_video' | 'copy_bundle' | 'audio' | 'video_with_audio'
+export type GenProvider = 'fal' | 'replicate' | 'heygen' | 'hedra' | 'claude' | 'eleven_labs' | 'banana'
 
 export interface DispatchOpts {
   orgId: string
@@ -41,6 +41,8 @@ const QUEUE_BY_KIND: Record<GenKind, string> = {
   video: 'generate-video',
   avatar_video: 'generate-avatar',
   copy_bundle: 'generate-copy',
+  audio: 'generate-audio',
+  video_with_audio: 'generate-video-with-audio',
 }
 
 export async function dispatchGenerationJob(opts: DispatchOpts): Promise<DispatchResult> {
