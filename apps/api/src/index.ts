@@ -12,6 +12,10 @@ import { credits } from './routes/credits'
 import { assets } from './routes/assets'
 import { campaigns as studioCampaigns } from './routes/studio/campaigns'
 import { studioGenerate } from './routes/studio/generate'
+import generateBranded from './routes/studio/generate-branded'
+import studioDashboard from './routes/studio/dashboard'
+import brandValidation from './routes/studio/brand-validation'
+import publishing from './routes/studio/publishing'
 import { ads, adsAdmin } from './routes/ads'
 import { adminSocial } from './routes/admin-social'
 import { supabaseAdmin } from './lib/supabase'
@@ -93,6 +97,13 @@ app.route('/api/credits', credits)
 app.route('/api/assets', assets)
 app.route('/api/studio/campaigns', studioCampaigns)
 app.route('/api/studio/generate', studioGenerate)
+
+// Studio Branded: personajes, marca, generación con identidad KAPI,
+// validación de marca, dashboard de cumplimiento y publicación.
+app.route('/api/studio/branded', generateBranded)
+app.route('/api/studio/dashboard', studioDashboard)
+app.route('/api/studio/brand-validation', brandValidation)
+app.route('/api/studio/publishing', publishing)
 
 // Meta Ads (modelo agencia central — System User token)
 app.route('/api/ads', ads)

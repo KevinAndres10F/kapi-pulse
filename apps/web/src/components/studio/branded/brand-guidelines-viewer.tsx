@@ -31,7 +31,7 @@ export function BrandGuidelinesViewer({ orgId, accessToken }: { orgId: string; a
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/branded/brand?orgId=${orgId}`, { headers })
+        const response = await fetch(`${API_URL}/api/studio/branded/brand?orgId=${orgId}`, { headers })
         const data = await response.json()
         setBrand(data.brand)
       } catch (error) {

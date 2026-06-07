@@ -38,7 +38,7 @@ export function CharacterSelector({ orgId, accessToken, onSelect }: CharacterSel
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/branded/characters?orgId=${orgId}`, { headers })
+        const response = await fetch(`${API_URL}/api/studio/branded/characters?orgId=${orgId}`, { headers })
         const data = await response.json()
         setCharacters(data.characters || [])
 

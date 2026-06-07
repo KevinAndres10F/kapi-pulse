@@ -41,7 +41,7 @@ export function ImageGenerationForm({ characterId, orgId, accessToken }: ImageGe
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      const response = await fetch(`${API_URL}/studio/branded/image-branded`, {
+      const response = await fetch(`${API_URL}/api/studio/branded/image-branded`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

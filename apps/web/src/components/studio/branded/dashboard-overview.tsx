@@ -30,7 +30,7 @@ export function DashboardOverview({ orgId, accessToken }: { orgId: string; acces
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/dashboard/brand-overview?orgId=${orgId}`, { headers })
+        const response = await fetch(`${API_URL}/api/studio/dashboard/brand-overview?orgId=${orgId}`, { headers })
         const result = await response.json()
         setData(result)
       } catch (error) {

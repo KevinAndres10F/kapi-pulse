@@ -34,7 +34,7 @@ export function ValidationViewer({ assetId, orgId, accessToken }: ValidationView
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
       const response = await fetch(
-        `${API_URL}/studio/brand-validation/assets/${assetId}/validate?orgId=${orgId}`,
+        `${API_URL}/api/studio/brand-validation/assets/${assetId}/validate?orgId=${orgId}`,
         { headers },
       )
       const data = await response.json()
