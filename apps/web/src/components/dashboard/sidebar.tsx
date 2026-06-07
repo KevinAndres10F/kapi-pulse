@@ -20,6 +20,7 @@ import {
   Folder,
   Coins,
   Megaphone,
+  Palette,
   X,
   Plus,
   Check,
@@ -71,6 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: 'analytics', label: 'Analíticas', icon: BarChart3, group: 'main' },
 
   { href: 'studio', label: 'Studio', icon: Sparkles, group: 'create' },
+  { href: 'studio/branded', label: 'Marca', icon: Palette, group: 'create' },
   { href: 'ai', label: 'IA Editorial', icon: Bot, group: 'create' },
   { href: 'ads', label: 'Anuncios', icon: Megaphone, group: 'create' },
   { href: 'library', label: 'Librería', icon: Folder, group: 'create' },
@@ -132,6 +134,12 @@ export function Sidebar({
     label: GROUP_LABELS[g],
     items: NAV_ITEMS.filter((i) => i.group === g),
   }))
+
+  // Resolvemos el enlace activo más específico para que rutas anidadas
+  // (ej. studio/branded) no resalten también a su padre (studio).
+  const activeHref = NAV_ITEMS.map((i) => `/${currentOrg.slug}/${i.href}`)
+    .filter((href) => pathname === href || pathname.startsWith(href + '/'))
+    .sort((a, b) => b.length - a.length)[0]
 
   return (
     <>
@@ -226,7 +234,7 @@ export function Sidebar({
                 <ul className="space-y-0.5">
                   {grp.items.map((item) => {
                     const href = `/${currentOrg.slug}/${item.href}`
-                    const isActive = pathname === href || pathname.startsWith(href + '/')
+                    const isActive = href === activeHref
                     return (
                       <li key={item.href}>
                         <Link
