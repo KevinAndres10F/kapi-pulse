@@ -4,6 +4,10 @@
 -- Note: Run this after the main schema migration
 -- This assumes organizations exist
 
+-- Las apps usan el schema dedicado kapi_pulse — fijamos search_path para que
+-- los INSERT caigan en las tablas correctas.
+SET search_path TO kapi_pulse, public;
+
 -- Get the first organization (adjust as needed for multi-org setup)
 INSERT INTO brand_guidelines (organization_id, primary_color, primary_color_oklch, secondary_color, secondary_color_oklch, accent_color, accent_color_oklch, text_primary, text_secondary, font_primary, font_secondary, watermark_enabled, watermark_position, watermark_opacity)
 SELECT id, '#001F4D', 'oklch(0.18 0.08 250)', '#BFCC00', 'oklch(0.75 0.24 100)', '#00A9B5', 'oklch(0.60 0.18 200)', '#001F4D', '#666666', 'Geist Sans', 'Geist Mono', true, 'bottom-right', 0.8

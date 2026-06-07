@@ -1,3 +1,8 @@
+-- IMPORTANTE: las apps usan el schema dedicado `kapi_pulse` (db: { schema: 'kapi_pulse' }).
+-- Esta migración usa nombres de tabla sin prefijo, así que fijamos el search_path
+-- para que las tablas se creen en kapi_pulse (donde ya viven organizations y generation_jobs).
+SET search_path TO kapi_pulse, public;
+
 -- Character Profiles Table (Fase 1)
 CREATE TABLE character_profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -111,7 +116,7 @@ CREATE OR REPLACE FUNCTION track_brand_usage()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.character_profile_id IS NOT NULL THEN
-    INSERT INTO character_usage_log (character_id, organization_id, generation_job_id)
+    INSERT INTO kapi_pulse.character_usage_log (character_id, organization_id, generation_job_id)
     VALUES (NEW.character_profile_id, NEW.organization_id, NEW.id)
     ON CONFLICT DO NOTHING;
   END IF;
