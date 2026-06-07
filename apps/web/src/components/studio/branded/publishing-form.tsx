@@ -40,6 +40,7 @@ export function PublishingForm({ assetIds, orgId, accessToken }: PublishingFormP
 
     try {
       const payload: Record<string, unknown> = {
+        orgId,
         assetIds,
         platform,
         validateBranding,
@@ -51,7 +52,7 @@ export function PublishingForm({ assetIds, orgId, accessToken }: PublishingFormP
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      const response = await fetch(`${API_URL}/studio/publishing/posts`, {
+      const response = await fetch(`${API_URL}/api/studio/publishing/posts`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),

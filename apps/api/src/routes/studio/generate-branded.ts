@@ -147,7 +147,9 @@ generateBranded.post('/image-branded', withOrgAuth('editor'), async (c) => {
   const data = parsed.data
 
   const provider: GenProvider = data.provider === 'banana' ? 'banana' : 'fal'
-  const model = data.model || 'fal-ai/flux/dev'
+  // Respeta FAL_DEFAULT_IMAGE_MODEL (p.ej. Nano Banana) cuando el cliente no
+  // especifica modelo. Banana.dev está deprecado, así que el default es FAL.
+  const model = data.model || process.env.FAL_DEFAULT_IMAGE_MODEL || 'fal-ai/flux/dev'
   const operation =
     provider === 'banana'
       ? 'generate_image_banana_flux_pro'

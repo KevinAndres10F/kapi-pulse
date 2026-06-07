@@ -12,6 +12,10 @@ import { credits } from './routes/credits'
 import { assets } from './routes/assets'
 import { campaigns as studioCampaigns } from './routes/studio/campaigns'
 import { studioGenerate } from './routes/studio/generate'
+import generateBranded from './routes/studio/generate-branded'
+import studioDashboard from './routes/studio/dashboard'
+import studioPublishing from './routes/studio/publishing'
+import brandValidation from './routes/studio/brand-validation'
 import { ads, adsAdmin } from './routes/ads'
 import { adminSocial } from './routes/admin-social'
 import { supabaseAdmin } from './lib/supabase'
@@ -93,6 +97,13 @@ app.route('/api/credits', credits)
 app.route('/api/assets', assets)
 app.route('/api/studio/campaigns', studioCampaigns)
 app.route('/api/studio/generate', studioGenerate)
+// Branded Content Studio: personajes, brand guidelines, generación branded,
+// dashboard, validación y publishing. Estos routers existían pero nunca se
+// habían montado — el frontend de /studio/branded los consume.
+app.route('/api/studio/branded', generateBranded)
+app.route('/api/studio/dashboard', studioDashboard)
+app.route('/api/studio/publishing', studioPublishing)
+app.route('/api/studio/brand-validation', brandValidation)
 
 // Meta Ads (modelo agencia central — System User token)
 app.route('/api/ads', ads)

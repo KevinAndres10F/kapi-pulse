@@ -64,8 +64,8 @@ export function BrandedClient({ orgId }: { orgId: string }) {
         <TabsContent value="generate" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-6">
-              <CharacterSelector accessToken={accessToken} onSelect={setSelectedCharacterId} />
-              <BrandGuidelinesViewer accessToken={accessToken} />
+              <CharacterSelector orgId={orgId} accessToken={accessToken} onSelect={setSelectedCharacterId} />
+              <BrandGuidelinesViewer orgId={orgId} accessToken={accessToken} />
             </div>
             <div>
               <ImageGenerationForm
@@ -98,7 +98,7 @@ export function BrandedClient({ orgId }: { orgId: string }) {
             </div>
 
             {generatedAssetIds.length > 0 && (
-              <ValidationViewer assetId={generatedAssetIds[0]} accessToken={accessToken} />
+              <ValidationViewer assetId={generatedAssetIds[0]} orgId={orgId} accessToken={accessToken} />
             )}
           </div>
         </TabsContent>
@@ -127,7 +127,7 @@ export function BrandedClient({ orgId }: { orgId: string }) {
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="space-y-6">
-          <DashboardOverview accessToken={accessToken} />
+          <DashboardOverview orgId={orgId} accessToken={accessToken} />
         </TabsContent>
       </Tabs>
     </div>

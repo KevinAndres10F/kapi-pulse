@@ -21,7 +21,6 @@ interface ImageGenerationFormProps {
 
 export function ImageGenerationForm({ characterId, orgId, accessToken }: ImageGenerationFormProps) {
   const [prompt, setPrompt] = useState('')
-  const [provider, setProvider] = useState<'fal' | 'banana'>('fal')
   const [numImages, setNumImages] = useState(1)
   const [isCarousel, setIsCarousel] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -41,14 +40,13 @@ export function ImageGenerationForm({ characterId, orgId, accessToken }: ImageGe
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      const response = await fetch(`${API_URL}/studio/branded/image-branded`, {
+      const response = await fetch(`${API_URL}/api/studio/branded/image-branded`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           orgId,
           prompt,
           characterId,
-          provider,
           numImages: isCarousel ? 3 : numImages,
           isCarousel,
         }),
@@ -118,20 +116,6 @@ export function ImageGenerationForm({ characterId, orgId, accessToken }: ImageGe
             <p className="text-xs text-slate-500">
               Your character and brand colors will be automatically included.
             </p>
-          </div>
-
-          {/* Provider */}
-          <div className="space-y-2">
-            <Label htmlFor="provider">Provider</Label>
-            <Select value={provider} onValueChange={(v) => setProvider(v as 'fal' | 'banana')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fal">FAL (Fast, High Quality)</SelectItem>
-                <SelectItem value="banana">Banana (Budget Friendly)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Carousel vs Single */}

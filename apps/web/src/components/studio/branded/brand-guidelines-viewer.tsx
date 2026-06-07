@@ -20,7 +20,7 @@ interface BrandGuidelines {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export function BrandGuidelinesViewer({ accessToken }: { accessToken?: string }) {
+export function BrandGuidelinesViewer({ orgId, accessToken }: { orgId: string; accessToken?: string }) {
   const [brand, setBrand] = useState<BrandGuidelines | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -30,7 +30,10 @@ export function BrandGuidelinesViewer({ accessToken }: { accessToken?: string })
         const headers: Record<string, string> = {}
         if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-        const response = await fetch(`${API_URL}/studio/branded/brand`, { headers })
+        const response = await fetch(
+          `${API_URL}/api/studio/branded/brand?org_id=${encodeURIComponent(orgId)}`,
+          { headers },
+        )
         const data = await response.json()
         setBrand(data.brand)
       } catch (error) {
@@ -42,7 +45,7 @@ export function BrandGuidelinesViewer({ accessToken }: { accessToken?: string })
 
     fetchBrand()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken])
+  }, [accessToken, orgId])
 
   if (loading) {
     return (
