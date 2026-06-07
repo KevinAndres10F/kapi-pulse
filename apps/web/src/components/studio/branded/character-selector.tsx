@@ -74,7 +74,7 @@ export function CharacterSelector({ accessToken, onSelect }: CharacterSelectorPr
         <CardDescription>Choose a character for your content</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select value={selectedCharacter?.id} onValueChange={(id) => {
+        <Select value={selectedCharacter?.id || ''} onValueChange={(id) => {
           const char = characters.find(c => c.id === id)
           if (char) {
             setSelectedCharacter(char)
