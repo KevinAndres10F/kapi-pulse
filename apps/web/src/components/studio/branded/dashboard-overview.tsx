@@ -17,14 +17,19 @@ interface DashboardData {
   brand: { primary_color: string; secondary_color: string; accent_color: string }
 }
 
-export function DashboardOverview() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+export function DashboardOverview({ accessToken }: { accessToken?: string }) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/studio/dashboard/brand-overview')
+        const headers: Record<string, string> = {}
+        if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+        const response = await fetch(`${API_URL}/studio/dashboard/brand-overview`, { headers })
         const result = await response.json()
         setData(result)
       } catch (error) {
@@ -35,7 +40,8 @@ export function DashboardOverview() {
     }
 
     fetchData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken])
 
   if (loading) {
     return (

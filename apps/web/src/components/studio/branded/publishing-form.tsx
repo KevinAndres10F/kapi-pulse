@@ -10,38 +10,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Send } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface PublishingFormProps {
   assetIds: string[]
   orgId: string
+  accessToken?: string
 }
 
-export function PublishingForm({ assetIds, orgId }: PublishingFormProps) {
+export function PublishingForm({ assetIds, orgId, accessToken }: PublishingFormProps) {
   const [platform, setPlatform] = useState<string>('instagram')
   const [caption, setCaption] = useState('')
   const [scheduleDate, setScheduleDate] = useState('')
   const [validateBranding, setValidateBranding] = useState(true)
   const [loading, setLoading] = useState(false)
   const [published, setPublished] = useState(false)
-  const { toast } = useToast()
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (assetIds.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Select at least one asset to publish',
-        variant: 'destructive',
-      })
+      toast.error('Select at least one asset to publish')
       return
     }
 
     setLoading(true)
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         assetIds,
         platform,
         validateBranding,
@@ -50,9 +48,12 @@ export function PublishingForm({ assetIds, orgId }: PublishingFormProps) {
       if (caption) payload.caption = caption
       if (scheduleDate) payload.scheduledFor = new Date(scheduleDate).toISOString()
 
-      const response = await fetch('/api/studio/publishing/posts', {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      const response = await fetch(`${API_URL}/studio/publishing/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       })
 
@@ -62,13 +63,9 @@ export function PublishingForm({ assetIds, orgId }: PublishingFormProps) {
         // Show validation issues if any
         if (data.validationResults) {
           const issues = Object.entries(data.validationResults).map(
-            ([assetId, result]: [string, any]) => `${assetId}: ${result.score}/100`
+            ([assetId, result]) => `${assetId}: ${(result as { score: number }).score}/100`
           )
-          toast({
-            title: 'Validation Issues',
-            description: `Some assets need review: ${issues.join(', ')}`,
-            variant: 'destructive',
-          })
+          toast.error(`Some assets need review: ${issues.join(', ')}`)
         } else {
           throw new Error(data.message || 'Publishing failed')
         }
@@ -76,20 +73,13 @@ export function PublishingForm({ assetIds, orgId }: PublishingFormProps) {
       }
 
       setPublished(true)
-      toast({
-        title: 'Success',
-        description: scheduleDate ? 'Post scheduled successfully' : 'Post published successfully',
-      })
+      toast.success(scheduleDate ? 'Post scheduled successfully' : 'Post published successfully')
 
       // Reset form
       setCaption('')
       setScheduleDate('')
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Publishing failed',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Publishing failed')
     } finally {
       setLoading(false)
     }

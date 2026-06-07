@@ -15,18 +15,27 @@ interface ValidationResult {
   suggestions: string[]
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface ValidationViewerProps {
   assetId: string
+  accessToken?: string
 }
 
-export function ValidationViewer({ assetId }: ValidationViewerProps) {
+export function ValidationViewer({ assetId, accessToken }: ValidationViewerProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const validateAsset = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/studio/brand-validation/assets/${assetId}/validate`)
+      const headers: Record<string, string> = {}
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      const response = await fetch(
+        `${API_URL}/studio/brand-validation/assets/${assetId}/validate`,
+        { headers },
+      )
       const data = await response.json()
       setValidation(data)
     } catch (error) {

@@ -9,40 +9,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Sparkles } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface ImageGenerationFormProps {
   characterId: string
   orgId: string
+  accessToken?: string
 }
 
-export function ImageGenerationForm({ characterId, orgId }: ImageGenerationFormProps) {
+export function ImageGenerationForm({ characterId, orgId, accessToken }: ImageGenerationFormProps) {
   const [prompt, setPrompt] = useState('')
   const [provider, setProvider] = useState<'fal' | 'banana'>('fal')
   const [numImages, setNumImages] = useState(1)
   const [isCarousel, setIsCarousel] = useState(false)
   const [loading, setLoading] = useState(false)
   const [jobId, setJobId] = useState<string | null>(null)
-  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!prompt.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a prompt',
-        variant: 'destructive',
-      })
+      toast.error('Please enter a prompt')
       return
     }
 
     setLoading(true)
 
     try {
-      const response = await fetch('/api/studio/branded/image-branded', {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      const response = await fetch(`${API_URL}/studio/branded/image-branded`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           orgId,
           prompt,
@@ -60,19 +61,12 @@ export function ImageGenerationForm({ characterId, orgId }: ImageGenerationFormP
       }
 
       setJobId(data.jobId)
-      toast({
-        title: 'Success',
-        description: 'Image generation started',
-      })
+      toast.success('Image generation started')
 
       // Reset form
       setPrompt('')
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Generation failed',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Generation failed')
     } finally {
       setLoading(false)
     }

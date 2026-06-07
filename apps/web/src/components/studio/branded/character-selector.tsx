@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 interface Character {
   id: string
   name: string
@@ -18,7 +20,12 @@ interface Character {
   reference_image_urls?: string[]
 }
 
-export function CharacterSelector() {
+interface CharacterSelectorProps {
+  accessToken?: string
+  onSelect?: (characterId: string) => void
+}
+
+export function CharacterSelector({ accessToken, onSelect }: CharacterSelectorProps) {
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,7 +33,10 @@ export function CharacterSelector() {
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        const response = await fetch('/api/studio/branded/characters')
+        const headers: Record<string, string> = {}
+        if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+        const response = await fetch(`${API_URL}/studio/branded/characters`, { headers })
         const data = await response.json()
         setCharacters(data.characters || [])
 
@@ -34,6 +44,7 @@ export function CharacterSelector() {
         const defaultChar = data.characters?.find((c: Character) => c.is_default)
         if (defaultChar) {
           setSelectedCharacter(defaultChar)
+          onSelect?.(defaultChar.id)
         }
       } catch (error) {
         console.error('Failed to fetch characters:', error)
@@ -43,7 +54,8 @@ export function CharacterSelector() {
     }
 
     fetchCharacters()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken])
 
   if (loading) {
     return (
@@ -64,7 +76,10 @@ export function CharacterSelector() {
       <CardContent className="space-y-4">
         <Select value={selectedCharacter?.id} onValueChange={(id) => {
           const char = characters.find(c => c.id === id)
-          if (char) setSelectedCharacter(char)
+          if (char) {
+            setSelectedCharacter(char)
+            onSelect?.(char.id)
+          }
         }}>
           <SelectTrigger>
             <SelectValue placeholder="Select a character" />
