@@ -16,7 +16,7 @@ import { Image, CheckCircle, Send, BarChart3, Sparkles } from 'lucide-react'
 export function BrandedClient({ orgId }: { orgId: string }) {
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined)
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>('')
-  const [generatedAssetIds] = useState<string[]>([])
+  const [generatedAssetIds, setGeneratedAssetIds] = useState<string[]>([])
 
   useEffect(() => {
     const supabase = createClient()
@@ -72,6 +72,9 @@ export function BrandedClient({ orgId }: { orgId: string }) {
                 characterId={selectedCharacterId}
                 orgId={orgId}
                 accessToken={accessToken}
+                onAssetsGenerated={(ids) =>
+                  setGeneratedAssetIds((prev) => Array.from(new Set([...prev, ...ids])))
+                }
               />
             </div>
           </div>
