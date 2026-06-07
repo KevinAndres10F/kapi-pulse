@@ -55,11 +55,21 @@ AI_URL                      = http://kapi-ai:3002                (String)  # red
 ```
 FAL_KEY                     = <fal.ai key>                       (Secret)  ⭐ imágenes + video
 FAL_API_URL                 = https://queue.fal.run              (String)  # opcional, tiene default
-FAL_DEFAULT_IMAGE_MODEL     = fal-ai/flux/dev                    (String)  # opcional
+FAL_DEFAULT_IMAGE_MODEL     = fal-ai/gemini-25-flash-image       (String)  # Nano Banana (ver abajo)
 FAL_DEFAULT_VIDEO_MODEL     = fal-ai/kling-video/v2              (String)  # opcional
 ELEVEN_LABS_API_KEY         = sk_...                             (Secret)  # voz de Gema (TTS)
 STUDIO_BUCKET               = generated-assets                   (String)  # bucket de assets
 ```
+
+> **Modelo de imagen — Nano Banana (Gemini 2.5 Flash Image):** fal.ai hostea
+> Nano Banana, así que se usa con la MISMA `FAL_KEY`, solo cambiando el modelo.
+> No requiere cambios de código ni key de Google.
+> - `FAL_DEFAULT_IMAGE_MODEL=fal-ai/gemini-25-flash-image` → Nano Banana (~$0.039/img)
+> - `FAL_DEFAULT_IMAGE_MODEL=fal-ai/flux/dev` → FLUX dev (alternativa)
+>
+> Si quisieras facturar directo con Google (en vez de fal) habría que escribir
+> un provider nuevo que llame a la Gemini API con `GEMINI_API_KEY` — eso sí es
+> desarrollo aparte.
 
 ### 🔴 Solo en `kapi-ai` (genera el copy/guion)
 
